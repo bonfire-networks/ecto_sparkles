@@ -78,8 +78,9 @@ query
 
 ## Copyright 
 
-Copyright (c) 2020 Up Learn
-Copyright (c) 2021 Bonfire
+- Copyright (c) 2021 Bonfire
+- Copyright (c) 2020 Up Learn
+- Copyright (c) 2019 Joshua Nussbaum 
 
-JoinPreload was orginally forked from [ecto_preloader](https://hex.pm/packages/ecto_preloader) (licensed under WTFPL)
-ReusableJoin was originally forked from [UpLearn](https://gitlab.com/up-learn-uk/query-elf) under Apache License Version 2.0
+- JoinPreload was orginally forked from [Ecto.Preloader](https://github.com/joshnuss/ecto_preloader), licensed under WTFPL)
+- ReusableJoin was originally forked from [QueryElf](https://gitlab.com/up-learn-uk/query-elf), licensed under Apache License Version 2.0
