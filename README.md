@@ -17,8 +17,8 @@ You could make it run faster by using a combination of join/preload, but that re
 ### Examples using just Ecto
 ```
   query
-  |> join(:left, [o, activity: activity], assoc(:my_like), as: :my_like)
-  |> preload([l, activity: activity, my_like: my_like], activity: {activity, [my_like: my_like]})
+  |> join(:left, [o, activity: activity], assoc(:object), as: :object)
+  |> preload([l, activity: activity, object: object], activity: {activity, [object: object]})
 ```
 
 Ecto requires calling `Query.join/4`, `Query.assoc/3` and `Query.preload/2`. Here's another example:
@@ -37,7 +37,7 @@ With `JoinPreload`, you can accomplish this with just one line of code.
 
 ```
   query
-  |> join_preload([:activity, :my_like])
+  |> join_preload([:activity, :object])
 ```
 
 ```
