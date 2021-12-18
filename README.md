@@ -2,11 +2,11 @@
 
 Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html) to better join + preload associations.
 
-- [`JoinPreload`](#JoinPreload-documentation)
-- [`ReusableJoin`](#reusablejoin-documentation)
+- [`join_preload`](#join_preload-documentation)
+- [`reusable_join`](#reusablejoin-documentation)
 
 
-## JoinPreload Documentation
+## join_preload Documentation
 
 The `join_preload` macro tells Ecto to perform a join and preload of (up to 5 nested levels of) associations.
 
@@ -31,9 +31,9 @@ Ecto requires calling `Query.join/4`, `Query.assoc/3` and `Query.preload/2`. Her
   |> Repo.all()
 ```
 
-## Example using JoinPreload
+## Example using join_preload
 
-With `JoinPreload`, you can accomplish this with just one line of code.
+With `join_preload`, you can accomplish this with just one line of code.
 
 ```
   query
@@ -47,10 +47,11 @@ With `JoinPreload`, you can accomplish this with just one line of code.
   |> Repo.all()
 ```
 
-As a bonus, `join_preload` automatically makes use of `reusable_join` so calling it multiple times for the same association has no ill effects.
+As a bonus, `join_preload` automatically makes use of `reusable_join`
+so calling it multiple times for the same association has no ill effects.
 
 
-## ReusableJoin Documentation
+## reusable_join Documentation
 
 The `reusable_join` macro is similar to `Ecto.Query.join/{4,5}`, but can be called multiple times 
 with the same alias.
@@ -69,6 +70,7 @@ To solve this, it is recommended to use this macro instead of the default `Ecto.
 in which case there will be only one join in the query that can be reused by multiple filters.
 
 ### Creating reusable joins
+
 ```elixir
 query
 |> reusable_join(:left, [t1], t2 in "other_table", on: t1.id == t2.id, as: :other_a)
@@ -78,9 +80,9 @@ query
 
 ## Copyright 
 
-- Copyright (c) 2021 Bonfire
+- Copyright (c) 2021 Bonfire developers
 - Copyright (c) 2020 Up Learn
 - Copyright (c) 2019 Joshua Nussbaum 
 
-- JoinPreload was orginally forked from [Ecto.Preloader](https://github.com/joshnuss/ecto_preloader), licensed under WTFPL)
-- ReusableJoin was originally forked from [QueryElf](https://gitlab.com/up-learn-uk/query-elf), licensed under Apache License Version 2.0
+- `join_preload` was orginally forked from [Ecto.Preloader](https://github.com/joshnuss/ecto_preloader), licensed under WTFPL)
+- `reusable_join` was originally forked from [QueryElf](https://gitlab.com/up-learn-uk/query-elf), licensed under Apache License Version 2.0
