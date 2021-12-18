@@ -5,6 +5,10 @@ Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html) to b
 - [`query_filter`](#query_filter-documentation)
 - [`join_preload`](#join_preload-documentation)
 - [`reusable_join`](#reusablejoin-documentation)
+- `EctoSparkles.Changesets` with various changeset helpers and validators
+- `EctoSparkles.Changesets.Errors` to better handle changeset errors
+- `EctoSparkles.ReleaseTasks` to run migrations, rollbacks, etc in a release
+- `EctoSparkles.LogSlow` to log slow queries with telemetry
 
 ## `query_filter` Documentation
 
