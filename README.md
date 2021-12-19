@@ -1,14 +1,85 @@
-# Ecto Sparkles
+# EctoSparkles
 
-Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html) to better join + preload associations.
+Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html) to better filter queries, as well as join+preload associations.
 
-- [`JoinPreload`](#JoinPreload-documentation)
-- [`ReusableJoin`](#reusablejoin-documentation)
+- [`query_filter`](#query_filter-documentation)
+- [`join_preload`](#join_preload-documentation)
+- [`reusable_join`](#reusablejoin-documentation)
+- `EctoSparkles.Changesets` with various changeset helpers and validators
+- `EctoSparkles.Changesets.Errors` to better handle changeset errors
+- `EctoSparkles.ReleaseTasks` to run migrations, rollbacks, etc in a release
+- `EctoSparkles.LogSlow` to log slow queries with telemetry
+
+## `query_filter` Documentation
+
+Helpers to make writing ecto queries more pleasant and the code shorter
+
+### Usage
+
+You can create queries from filter parameters, for example: 
+
+```elixir
+query_filter(User, %{id: 5})
+```
+is the same as:
+```elixir
+from u in User, where: id == 5
+```
+
+This allows for filters to be constructed from data such as:
+```elixir
+query_filter(User, %{
+  favorite_food: "curry",
+  age: %{gte: 18, lte: 50},
+  name: %{ilike: "steven"},
+  preload: [:address],
+  last: 5
+})
+```
+which would be equivalent to:
+```elixir
+from u in User,
+  preload: [:address],
+  limit: 5,
+  where: u.favorite_food == "curry" and
+         u.age >= 18 and u.age <= 50 and
+         ilike(u.name, "%steven%")
+```
+
+You are also able to filter on any natural field of a schema, as well as use:
+- gte/gt
+- lte/lt
+- like/ilike
+- is_nil/not(is_nil)
+
+For example:
+```elixir
+query_filter(User, %{name: %{ilike: "steve"}})
+query_filter(User, %{name: "Steven", %{age: %{gte: 18, lte: 30}}})
+query_filter(User, %{is_banned: %{!=: nil}})
+query_filter(User, %{is_banned: %{==: nil}})
+
+my_query = query_filter(User, %{first_name: "Daft"})
+query_filter(my_query, %{last_name: "Punk"})
+```
+
+###### List of common filters
+- `preload` - Preloads fields onto the query results
+- `start_date` - Query for items inserted after this date
+- `end_date` - Query for items inserted before this date
+- `before` - Get items with IDs before this value
+- `after` - Get items with IDs after this value
+- `ids` - Get items with a list of ids
+- `first` - Gets the first n items
+- `last` - Gets the last n items
+- `limit` - Gets the first n items
+- `offset` - Offsets limit by n items
+- `search` - ***Warning:*** This requires schemas using this to have a `&by_search(query, val)` function
 
 
-## JoinPreload Documentation
+## `join_preload` Documentation
 
-The `join_preload` macro tells Ecto to perform a join and preload of (up to 5 nested levels of) associations.
+A macro which tells Ecto to perform a join and preload of (up to 5 nested levels of) associations.
 
 By default, Ecto preloads associations using a separate query for each association, which can degrade performance.
 
@@ -31,9 +102,9 @@ Ecto requires calling `Query.join/4`, `Query.assoc/3` and `Query.preload/2`. Her
   |> Repo.all()
 ```
 
-## Example using JoinPreload
+## Example using join_preload
 
-With `JoinPreload`, you can accomplish this with just one line of code.
+With `join_preload`, you can accomplish this with just one line of code.
 
 ```
   query
@@ -47,12 +118,13 @@ With `JoinPreload`, you can accomplish this with just one line of code.
   |> Repo.all()
 ```
 
-As a bonus, `join_preload` automatically makes use of `reusable_join` so calling it multiple times for the same association has no ill effects.
+As a bonus, `join_preload` automatically makes use of `reusable_join`
+so calling it multiple times for the same association has no ill effects.
 
 
-## ReusableJoin Documentation
+## `reusable_join` Documentation
 
-The `reusable_join` macro is similar to `Ecto.Query.join/{4,5}`, but can be called multiple times 
+A macro is similar to `Ecto.Query.join/{4,5}`, but can be called multiple times 
 with the same alias.
 
 Note that only the first join operation is performed, the subsequent ones that use the same alias
@@ -69,6 +141,7 @@ To solve this, it is recommended to use this macro instead of the default `Ecto.
 in which case there will be only one join in the query that can be reused by multiple filters.
 
 ### Creating reusable joins
+
 ```elixir
 query
 |> reusable_join(:left, [t1], t2 in "other_table", on: t1.id == t2.id, as: :other_a)
@@ -78,9 +151,11 @@ query
 
 ## Copyright 
 
-- Copyright (c) 2021 Bonfire
+- Copyright (c) 2021 Bonfire developers
+- Copyright (c) 2020 Mika Kalathil
 - Copyright (c) 2020 Up Learn
 - Copyright (c) 2019 Joshua Nussbaum 
 
-- JoinPreload was orginally forked from [Ecto.Preloader](https://github.com/joshnuss/ecto_preloader), licensed under WTFPL)
-- ReusableJoin was originally forked from [QueryElf](https://gitlab.com/up-learn-uk/query-elf), licensed under Apache License Version 2.0
+- `EctoSparkles.Filter` was originally forked from [EctoShorts](https://github.com/MikaAK/ecto_shorts), licensed under MIT)
+- `join_preload` was originally forked from [Ecto.Preloader](https://github.com/joshnuss/ecto_preloader), licensed under WTFPL)
+- `reusable_join` was originally forked from [QueryElf](https://gitlab.com/up-learn-uk/query-elf), licensed under Apache License Version 2.0
