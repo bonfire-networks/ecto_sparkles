@@ -2,14 +2,7 @@
 defmodule EctoSparkles.LogSlow do
   require Logger
   @moduledoc """
-  Log slow Ecto queries, with stacktrace to the code which called them
-
-  Usage: wrap your calls to Repo functions that execute SQL you want to trace in:
-
-  trace(fn ->
-    # Repo call here
-  end)
-
+  Log slow Ecto queries
   """
 
   def setup(otp_app) do
