@@ -10,6 +10,9 @@ Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html) to b
 - `EctoSparkles.ReleaseTasks` to run migrations, rollbacks, etc in a release
 - `EctoSparkles.LogSlow` to log slow queries with telemetry
 
+NOTE: you need to put something like `config :ecto_sparkles, :otp_app, :your_otp_app_name` in your app's config.
+
+
 ## `query_filter` Documentation
 
 Helpers to make writing ecto queries more pleasant and the code shorter

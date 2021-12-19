@@ -1,6 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
 defmodule EctoSparkles.ReleaseTasks do
-  @app Bonfire.Common.Config.get!(:otp_app)
 
   def rollback(repo \\ nil, step \\ 1)
 
@@ -39,8 +38,9 @@ defmodule EctoSparkles.ReleaseTasks do
 
 
   defp repos do
-    Application.load(@app)
-    Application.fetch_env!(@app, :ecto_repos)
+    app = Application.fetch_env!(:ecto_sparkles, :otp_app)
+    Application.load(app)
+    Application.fetch_env!(app, :ecto_repos)
   end
 
 end
