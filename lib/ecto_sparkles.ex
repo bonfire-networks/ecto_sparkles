@@ -292,6 +292,6 @@ defmodule EctoSparkles do
   # i'm sure this one exists in the standard library but i can't seem to find it.
   defp listify(x) when is_list(x), do: x
   defp listify(x), do: [x]
-  
+
 
 end
