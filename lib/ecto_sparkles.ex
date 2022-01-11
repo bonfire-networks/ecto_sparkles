@@ -124,13 +124,14 @@ defmodule EctoSparkles do
   ])
   ```
   """
-  defmacro proload(query, associations), do: proload_impl(query, associations, __CALLER__)
+  defmacro proload(query, qual \\ :left, associations),
+    do: proload_impl(query, qual, associations, __CALLER__)
 
-  defp proload_impl(query, associations, caller) do
+  defp proload_impl(query, qual, associations, caller) do
     # we want to expand metadata references
     associations = listify(expand(associations, caller))
     # iterate over the form, generating nested join clauses
-    proload_join(query, associations, [var(:root)], :root, "")
+    proload_join(query, qual, associations, [var(:root)], :root, "")
     # pipe that into a preload expression
     |> preload_clause(
       proload_preload_bindings(associations),
@@ -142,6 +143,7 @@ defmodule EctoSparkles do
   # step, which it pipes the query form through returning a new query form.
   defp proload_join(
     query,    # a quoted form that evaluates to a query
+    qual,     # left/inner/etc.
     form,     # the current expression we are translating
     bindings, # an improper keyword list of nested bindings for our join expr
     assoc,    # the alias of the thing we are joining from
@@ -151,24 +153,25 @@ defmodule EctoSparkles do
       # an atom is a simple join
       _ when is_atom(form) ->
         expr = quote do: sparkly in assoc(unquote(var(assoc)), unquote(form))
-        rejoin(query, bindings, expr, prefix(form, prefix))
+        rejoin(query, qual, bindings, expr, prefix(form, prefix))
 
       # lists are simply folded over
       _ when is_list(form) ->
-        Enum.reduce(form, query, &proload_join(&2, &1, bindings, assoc, prefix))
+        Enum.reduce(form, query, &proload_join(&2, qual, &1, bindings, assoc, prefix))
 
        # a 2-tuple where the key is a binary extends the prefix
       {pre, form} when is_binary(pre) ->
-        proload_join(query, form, bindings, assoc, prefix <> pre)
+        proload_join(query, qual, form, bindings, assoc, prefix <> pre)
 
       # a 2-tuple where the key is an atom names an association
       {rel, form} when is_atom(rel) ->
         alia = prefix(rel, prefix)
         # now generate a join, aliasing it with a prefix
         expr = quote(do: sparkly in assoc(unquote(var(assoc)), unquote(rel)))
-        rejoin(query, bindings, expr, alia)
+        rejoin(query, qual, bindings, expr, alia)
         # and recurse generating the rest of the joins
         |> proload_join(
+          qual,
           form,                            # the nested bit
           bindings ++ [{alia, var(alia)}], # add our alias to the bindings
           alia,                            # join from us
@@ -252,14 +255,11 @@ defmodule EctoSparkles do
     do: rejoin(query, :left, bindings, expr, [as: as], as)
 
   # not currently used, but handy
-  # defp rejoin(query, qual, bindings, expr, opts) when is_atom(qual) and is_list(opts),
-  #   do: rejoin(query, qual, bindings, expr, opts, Keyword.fetch!(opts, :as))
+  defp rejoin(query, qual, bindings, expr, opts) when is_atom(qual) and is_list(opts),
+    do: rejoin(query, qual, bindings, expr, opts, Keyword.fetch!(opts, :as))
 
-  # defp rejoin(query, qual, bindings, expr, as) when is_atom(qual) and is_atom(as),
-  #   do: rejoin(query, qual, bindings, expr, [as: as], as)
-
-  # defp rejoin(query, bindings, expr, opts, as) when is_list(opts) and is_atom(as),
-  #   do: rejoin(query, :left, bindings, expr, opts, as)
+  defp rejoin(query, qual, bindings, expr, as) when is_atom(qual) and is_atom(as),
+    do: rejoin(query, qual, bindings, expr, [as: as], as)
 
   defp rejoin(query, qual, bindings, expr, opts, as),
     do: reusable_join_impl(query, qual, bindings, expr, opts, as)
