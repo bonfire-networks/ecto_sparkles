@@ -60,6 +60,6 @@ defmodule EctoSparkles.Changesets.Errors do
   end
 
   def errors_map_string(e, _) do
-    e
+    inspect e
   end
 end
