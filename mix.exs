@@ -23,7 +23,8 @@ defmodule EctoSparkles.MixProject do
   defp deps do
     [
       {:ecto_sql, "~> 3.3"},
-      {:ex_doc, ">= 0.0.0", only: :dev}
+      {:ex_doc, ">= 0.0.0", only: :dev},
+      {:ecto_shorts, git: "https://github.com/bonfire-networks/ecto_shorts", branch: "refactor/attempt1"}
     ]
   end
 

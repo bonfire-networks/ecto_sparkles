@@ -39,7 +39,8 @@ defmodule EctoSparkles do
   """
 
   def query_filter(module_or_query, filters, order_by_prop \\ :id, order_direction \\ :desc) do
-    EctoSparkles.Filter.query_params(module_or_query, filters, order_by_prop, order_direction)
+    # EctoSparkles.Filter.query_params(module_or_query, filters, order_by_prop, order_direction)
+    EctoShorts.filter(module_or_query, filters, order_by_prop, order_direction)
   end
 
 
