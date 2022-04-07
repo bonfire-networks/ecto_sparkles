@@ -24,6 +24,7 @@ defmodule EctoSparkles.MixProject do
     [
       {:ecto_sql, "~> 3.3"},
       {:ex_doc, ">= 0.0.0", only: :dev},
+      {:recase, "~> 0.5"},
       {:ecto_shorts, git: "https://github.com/bonfire-networks/ecto_shorts", branch: "refactor/attempt1"}
     ]
   end

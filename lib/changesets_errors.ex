@@ -5,24 +5,25 @@ defmodule EctoSparkles.Changesets.Errors do
   def error(changeset, [{k, v} | errors]),
     do: error(Changeset.add_error(changeset, k, v), errors)
 
-  def cs_to_string(%Ecto.Changeset{} = changeset) do
-    IO.inspect(changeset)
+  def changeset_errors_string(changeset, include_schema_tree \\ true)
+
+  def changeset_errors_string(%Ecto.Changeset{} = changeset, _) do
+    # IO.inspect(changeset)
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
       Enum.reduce(opts, msg, fn {key, value}, acc ->
         String.replace(acc, "%{#{key}}", do_to_string(value))
       end)
     end)
-    |> many()
+    |> enum_errors()
   end
-  def cs_to_string(changeset), do: changeset
+  def changeset_errors_string(changeset, _), do: changeset
 
-  defp many(changeset) do
+  defp enum_errors(changeset) do
     changeset
     |> Enum.reduce("", fn {k, v}, acc ->
-      IO.inspect(v: v)
       joined_errors = do_to_string(v, "; ")
 
-      "#{acc} \n#{k}: #{joined_errors}"
+      "#{acc} \n#{Recase.to_sentence(to_string(k))}: #{joined_errors}"
     end)
   end
 
@@ -33,33 +34,8 @@ defmodule EctoSparkles.Changesets.Errors do
     |> Enum.join(sep)
   end
   defp do_to_string(empty, _) when empty == %{} or empty == "", do: nil
-  defp do_to_string(%{} = many, _), do: many(many)
+  defp do_to_string(%{} = enum_errors, _), do: enum_errors(enum_errors)
   defp do_to_string(val, _), do: to_string(val)
 
 
-  # TODO: consolidate the duplicated functionality in above and below functions?
-
-  def changeset_errors_string(changeset, include_first_level_of_keys \\ true)
-  def changeset_errors_string(%Ecto.Changeset{} = changeset, include_first_level_of_keys) do
-    errors = Ecto.Changeset.traverse_errors(changeset, fn
-        {msg, opts} -> String.replace(msg, "%{count}", to_string(opts[:count]))
-        msg -> msg
-      end)
-    errors_map_string(errors, include_first_level_of_keys)
-  end
-  def changeset_errors_string(error, _), do: error
-
-  def errors_map_string(errors, include_keys \\ true)
-
-  def errors_map_string(%{} = errors, true) do
-    Enum.map_join(errors, ", ", fn {key, val} -> "#{key} #{errors_map_string(val)}" end)
-  end
-
-  def errors_map_string(%{} = errors, false) do
-    Enum.map_join(errors, ", ", fn {_key, val} -> "#{errors_map_string(val)}" end)
-  end
-
-  def errors_map_string(e, _) do
-    inspect e
-  end
 end
