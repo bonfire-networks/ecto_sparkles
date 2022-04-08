@@ -1,8 +1,7 @@
 # EctoSparkles
 
-Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html) to better filter queries, as well as join+preload associations.
+Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html) 
 
-- [`query_filter`](#query_filter-documentation)
 - [`join_preload`](#join_preload-documentation)
 - [`reusable_join`](#reusablejoin-documentation)
 - `EctoSparkles.Changesets` with various changeset helpers and validators
@@ -11,73 +10,6 @@ Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html) to b
 - `EctoSparkles.LogSlow` to log slow queries with telemetry
 
 NOTE: you need to put something like `config :ecto_sparkles, :otp_app, :your_otp_app_name` in your app's config.
-
-
-## `query_filter` Documentation
-
-Helpers to make writing ecto queries more pleasant and the code shorter
-
-### Usage
-
-You can create queries from filter parameters, for example: 
-
-```elixir
-query_filter(User, %{id: 5})
-```
-is the same as:
-```elixir
-from u in User, where: id == 5
-```
-
-This allows for filters to be constructed from data such as:
-```elixir
-query_filter(User, %{
-  favorite_food: "curry",
-  age: %{gte: 18, lte: 50},
-  name: %{ilike: "steven"},
-  preload: [:address],
-  last: 5
-})
-```
-which would be equivalent to:
-```elixir
-from u in User,
-  preload: [:address],
-  limit: 5,
-  where: u.favorite_food == "curry" and
-         u.age >= 18 and u.age <= 50 and
-         ilike(u.name, "%steven%")
-```
-
-You are also able to filter on any natural field of a schema, as well as use:
-- gte/gt
-- lte/lt
-- like/ilike
-- is_nil/not(is_nil)
-
-For example:
-```elixir
-query_filter(User, %{name: %{ilike: "steve"}})
-query_filter(User, %{name: "Steven", %{age: %{gte: 18, lte: 30}}})
-query_filter(User, %{is_banned: %{!=: nil}})
-query_filter(User, %{is_banned: %{==: nil}})
-
-my_query = query_filter(User, %{first_name: "Daft"})
-query_filter(my_query, %{last_name: "Punk"})
-```
-
-###### List of common filters
-- `preload` - Preloads fields onto the query results
-- `start_date` - Query for items inserted after this date
-- `end_date` - Query for items inserted before this date
-- `before` - Get items with IDs before this value
-- `after` - Get items with IDs after this value
-- `ids` - Get items with a list of ids
-- `first` - Gets the first n items
-- `last` - Gets the last n items
-- `limit` - Gets the first n items
-- `offset` - Offsets limit by n items
-- `search` - ***Warning:*** This requires schemas using this to have a `&by_search(query, val)` function
 
 
 ## `join_preload` Documentation
@@ -155,10 +87,8 @@ query
 ## Copyright 
 
 - Copyright (c) 2021 Bonfire developers
-- Copyright (c) 2020 Mika Kalathil
 - Copyright (c) 2020 Up Learn
 - Copyright (c) 2019 Joshua Nussbaum 
 
-- `EctoSparkles.Filter` was originally forked from [EctoShorts](https://github.com/MikaAK/ecto_shorts), licensed under MIT)
 - `join_preload` was originally forked from [Ecto.Preloader](https://github.com/joshnuss/ecto_preloader), licensed under WTFPL)
 - `reusable_join` was originally forked from [QueryElf](https://gitlab.com/up-learn-uk/query-elf), licensed under Apache License Version 2.0
