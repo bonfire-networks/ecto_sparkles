@@ -22,9 +22,10 @@ defmodule EctoSparkles.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto_sql, "~> 3.3"},
+      {:ecto_sql, "~> 3.7.2"},
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:recase, "~> 0.5"},
+      {:recase, "~> 0.7"},
+      {:where, "~> 0.1"},
       {:ecto_shorts, git: "https://github.com/bonfire-networks/ecto_shorts", branch: "refactor/attempt1"}
     ]
   end

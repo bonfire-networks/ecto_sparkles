@@ -7,7 +7,7 @@ Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html)
 - `EctoSparkles.Changesets` with various changeset helpers and validators
 - `EctoSparkles.Changesets.Errors` to better handle changeset errors
 - `EctoSparkles.ReleaseTasks` to run migrations, rollbacks, etc in a release
-- `EctoSparkles.LogSlow` to log slow queries with telemetry
+- `EctoSparkles.Log` to log slow queries with telemetry
 
 NOTE: you need to put something like `config :ecto_sparkles, :otp_app, :your_otp_app_name` in your app's config.
 
