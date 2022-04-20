@@ -8,24 +8,28 @@ defmodule EctoSparkles.Log do
   def setup(otp_app) do
     events = [
       [otp_app, :repo, :query], # <- Telemetry event id for Ecto queries
+      [otp_app, :repo, :insert],
+      [otp_app, :repo, :update],
+      [otp_app, :repo, :delete],
     ]
 
     :telemetry.attach_many("#{otp_app}-instrumenter", events, &handle_event/4, nil)
   end
 
-  def handle_event([_, :repo, :query], %{query_time: query_time, decode_time: decode_time} = measurements, %{query: query, source: source} = metadata, _config) when not is_nil(source) and source not in ["oban_jobs"] and query not in ["commit", "begin"] do
+  def handle_event(_, %{query_time: query_time, decode_time: decode_time} = measurements, %{query: query, source: source} = metadata, _config) when not is_nil(source) and source not in ["oban_jobs"] and query not in ["commit", "begin"] do
     maybe_trace(System.convert_time_unit(query_time, :native, :millisecond)+System.convert_time_unit(decode_time, :native, :millisecond), measurements, metadata)
   end
 
-  def handle_event([_, :repo, :query], %{query_time: query_time} = measurements, %{query: query, source: source} = metadata, _config) when not is_nil(source) and source not in ["oban_jobs"] and query not in ["commit", "begin"] do
+  def handle_event(_, %{query_time: query_time} = measurements, %{query: query, source: source} = metadata, _config) when not is_nil(source) and source not in ["oban_jobs"] and query not in ["commit", "begin"] do
     maybe_trace(System.convert_time_unit(query_time, :native, :millisecond), measurements, metadata)
   end
 
-  def handle_event(duration_in_ms, measurements, %{query: query, source: source} = metadata, _config) when not is_nil(source) and source not in ["oban_jobs"] and is_binary(query) and query not in ["commit", "begin"] do
-    log_query(duration_in_ms, measurements, metadata)
+  def handle_event(_, measurements, %{query: query, source: source} = metadata, _config) when not is_nil(source) and source not in ["oban_jobs"] and is_binary(query) and query not in ["commit", "begin"] do
+    log_query(nil, measurements, metadata)
   end
 
-  def handle_event(_duration_in_ms, _measurements, _metadata, _config) do
+  def handle_event(_, _measurements, metadata, _config) do
+    # IO.inspect(metadata, label: "unhandled repo log")
     nil
   end
 
