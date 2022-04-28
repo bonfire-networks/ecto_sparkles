@@ -1,4 +1,4 @@
-defmodule EctoSparkles.MixProject do
+defmodule EctoSparkles.Project do
   use Mix.Project
 
   def project do

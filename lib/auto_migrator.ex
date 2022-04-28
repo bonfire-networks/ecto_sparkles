@@ -19,8 +19,8 @@ Runs ecto migrations automatically on startup (add this to your app's supervisio
   def startup_migrations() do
     if is_nil(System.get_env("DISABLE_DB_AUTOMIGRATION")) do
       try do
-        EctoSparkles.ReleaseTasks.create()
-        EctoSparkles.ReleaseTasks.migrate()
+        EctoSparkles.Migrator.create()
+        EctoSparkles.Migrator.migrate()
       rescue
         e ->
           Logger.error("Error when running migrations on startup: #{inspect e}")
