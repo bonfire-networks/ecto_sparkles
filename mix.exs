@@ -22,7 +22,8 @@ defmodule EctoSparkles.Project do
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:recase, "~> 0.7"},
       {:where, "~> 0.1"},
-      {:ecto_shorts, git: "https://github.com/bonfire-networks/ecto_shorts", branch: "refactor/attempt1"}
+      {:ecto_shorts, git: "https://github.com/bonfire-networks/ecto_shorts", branch: "refactor/attempt1"},
+      {:html_sanitize_ex, "~> 1.4.2", optional: true}
     ]
   end
 
