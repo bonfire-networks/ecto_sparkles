@@ -35,7 +35,7 @@ defmodule EctoSparkles.Log do
 
   def maybe_trace(duration_in_ms, measurements,  %{query: query} = metadata) when duration_in_ms > 10 do
 
-    slow_definition_in_ms = Bonfire.Common.Config.get([Bonfire.Repo, :slow_query_ms], 100)
+    slow_definition_in_ms = Bonfire.Common.Config.get([Bonfire.Common.Repo, :slow_query_ms], 100)
 
     if (duration_in_ms > slow_definition_in_ms) do
       Logger.warn("Slow database query: "<>format_log(duration_in_ms, measurements, metadata))
