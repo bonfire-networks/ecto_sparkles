@@ -5,6 +5,7 @@ defmodule EctoSparkles.ErlangTermBinary do
   underlying DB field to be a binary.
   """
   use Ecto.Type
+
   def type, do: :binary
 
   @doc """
