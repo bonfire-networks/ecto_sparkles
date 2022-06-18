@@ -5,32 +5,43 @@ defmodule EctoSparkles.Log do
   Log slow Ecto queries
   """
 
-  def setup(otp_app) do
-    events = [
-      [otp_app, :repo, :query], # <- Telemetry event id for Ecto queries
-      [otp_app, :repo, :insert],
-      [otp_app, :repo, :update],
-      [otp_app, :repo, :delete],
-    ]
+  @exclude_sources ["oban_jobs"]
+  @exclude_queries ["commit", "begin"]
+  @exclude_match ["oban_jobs", "pg_try_advisory_xact_lock"]
 
-    :telemetry.attach_many("#{otp_app}-instrumenter", events, &handle_event/4, nil)
+  def setup(repo_module) do
+    config = repo_module.config()
+    prefix = config[:telemetry_prefix]
+    query_event = prefix ++ [:query] # <- Telemetry event id for Ecto queries
+    # events = [
+    #   query_event,
+    #   prefix ++ [:insert],
+    #   prefix ++ [:update],
+    #   prefix ++ [:delete]
+    # ]
+
+    # :telemetry.attach_many("ectosparkles-log", events, &EctoSparkles.Log.handle_event/4, [])
+    :telemetry.attach("ectosparkles-log", query_event, &EctoSparkles.Log.handle_event/4, [])
   end
 
-  def handle_event(_, %{query_time: query_time, decode_time: decode_time} = measurements, %{query: query, source: source} = metadata, _config) when not is_nil(source) and source not in ["oban_jobs"] and query not in ["commit", "begin"] do
+  def handle_event(_, measurements, %{query: query, source: source} = metadata, config) when ( is_nil(source) or source not in @exclude_sources ) and query not in @exclude_queries do
+    maybe_handle_event(measurements, metadata)
+  end
+  def handle_event(_, measurements, metadata, config) do
+    # IO.inspect(metadata, label: "EctoSparkles: unhandled ecto log")
+    nil
+  end
+
+  defp maybe_handle_event(%{query_time: query_time, decode_time: decode_time} = measurements, %{query: query, source: source} = metadata) do
     maybe_trace(System.convert_time_unit(query_time, :native, :millisecond)+System.convert_time_unit(decode_time, :native, :millisecond), measurements, metadata)
   end
 
-  def handle_event(_, %{query_time: query_time} = measurements, %{query: query, source: source} = metadata, _config) when not is_nil(source) and source not in ["oban_jobs"] and query not in ["commit", "begin"] do
+  defp maybe_handle_event(%{query_time: query_time} = measurements, %{query: query, source: source} = metadata) do
     maybe_trace(System.convert_time_unit(query_time, :native, :millisecond), measurements, metadata)
   end
 
-  def handle_event(_, measurements, %{query: query, source: source} = metadata, _config) when not is_nil(source) and source not in ["oban_jobs"] and is_binary(query) and query not in ["commit", "begin"] do
+  defp maybe_handle_event(measurements, metadata) do
     log_query(nil, measurements, metadata)
-  end
-
-  def handle_event(_, _measurements, metadata, _config) do
-    # IO.inspect(metadata, label: "unhandled repo log")
-    nil
   end
 
   def maybe_trace(duration_in_ms, measurements,  %{query: query} = metadata) when duration_in_ms > 10 do
@@ -50,8 +61,8 @@ defmodule EctoSparkles.Log do
   end
 
   def log_query(duration_in_ms, measurements, metadata) do
-    String.to_atom(System.get_env("DB_QUERIES_LOG_LEVEL", "info"))
-    |> Logger.log("SQL query: "<>format_log(duration_in_ms, measurements, metadata))
+    level = String.to_atom(System.get_env("DB_QUERIES_LOG_LEVEL", "debug"))
+    if level && not String.contains?(metadata.query, @exclude_match), do: Logger.log(level, "SQL query: "<>format_log(duration_in_ms, measurements, metadata))
   end
 
   def format_log(duration_in_ms, measurements, metadata) do
@@ -60,8 +71,9 @@ defmodule EctoSparkles.Log do
     # Strip out unnecessary quotes from the query for readability
     query = Regex.replace(~r/(\d\.)"([^"]+)"/, metadata.query, "\\1\\2")
     params = metadata.params |> Enum.map(&decode_value/1) |> inspect(charlists: false)
+    source = if metadata.source, do: "source=#{inspect(metadata.source)}"
 
-    "#{ok} source=#{inspect(metadata.source)} db=#{duration_in_ms}ms \n  #{query} \n  params=#{params}"
+    "#{ok} db=#{duration_in_ms}ms #{source}\n  #{query} \n  params=#{params}"
   end
 
   defp decode_value(value) when is_list(value) do
