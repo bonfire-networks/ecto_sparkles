@@ -18,7 +18,8 @@ defmodule EctoSparkles.Project do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:ecto_sql, "~> 3.7.2"},
+      {:ecto, "~> 3.8"},
+      {:ecto_sql, "~> 3.8"},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:recase, "~> 0.7"},
       {:where, "~> 0.1"},
