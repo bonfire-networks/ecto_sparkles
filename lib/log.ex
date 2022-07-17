@@ -41,39 +41,46 @@ defmodule EctoSparkles.Log do
   end
 
   defp maybe_handle_event(measurements, metadata) do
-    log_query(nil, measurements, metadata)
+    {result, _} = metadata.result
+    log_query(result, nil, measurements, metadata)
   end
 
   def maybe_trace(duration_in_ms, measurements,  %{query: query} = metadata) when duration_in_ms > 10 do
 
     slow_definition_in_ms = Bonfire.Common.Config.get([Bonfire.Common.Repo, :slow_query_ms], 100)
 
+    {result, _} = metadata.result
+
     if (duration_in_ms > slow_definition_in_ms) do
-      Logger.warn("Slow database query: "<>format_log(duration_in_ms, measurements, metadata))
+      Logger.warn("Slow database query: "<>format_log(result, duration_in_ms, measurements, metadata))
     else
-      log_query(duration_in_ms, measurements, metadata)
+      log_query(result, duration_in_ms, measurements, metadata)
     end
 
   end
 
   def maybe_trace(duration_in_ms, measurements, metadata) do
-    log_query(duration_in_ms, measurements, metadata)
+    {result, _} = metadata.result
+    log_query(result, duration_in_ms, measurements, metadata)
   end
 
-  def log_query(duration_in_ms, measurements, metadata) do
+  def log_query(result, duration_in_ms, measurements, metadata) when result in [:error, "error"] do
+    if not String.contains?(metadata.query, @exclude_match), do: Logger.log(:error, "SQL query: "<>format_log(result, duration_in_ms, measurements, metadata))
+  end
+
+  def log_query(result, duration_in_ms, measurements, metadata) do
     level = String.to_atom(System.get_env("DB_QUERIES_LOG_LEVEL", "debug"))
-    if level && not String.contains?(metadata.query, @exclude_match), do: Logger.log(level, "SQL query: "<>format_log(duration_in_ms, measurements, metadata))
+    if level && not String.contains?(metadata.query, @exclude_match), do: Logger.log(level, "SQL query: "<>format_log(result, duration_in_ms, measurements, metadata))
   end
 
-  def format_log(duration_in_ms, measurements, metadata) do
+  def format_log(result, duration_in_ms, measurements, metadata) do
     # debug(metadata)
-    {ok, _} = metadata.result
     # Strip out unnecessary quotes from the query for readability
     query = Regex.replace(~r/(\d\.)"([^"]+)"/, metadata.query, "\\1\\2")
     params = metadata.params |> Enum.map(&decode_value/1) |> inspect(charlists: false)
     source = if metadata.source, do: "source=#{inspect(metadata.source)}"
 
-    "#{ok} db=#{duration_in_ms}ms #{source}\n  #{query} \n  params=#{params}"
+    "#{result} db=#{duration_in_ms}ms #{source}\n  #{query} \n  params=#{params}"
   end
 
   defp decode_value(value) when is_list(value) do
