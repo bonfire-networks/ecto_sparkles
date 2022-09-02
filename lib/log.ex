@@ -74,7 +74,7 @@ defmodule EctoSparkles.Log do
   end
 
   def format_log(result, duration_in_ms, measurements, metadata) do
-    # debug(metadata)
+    # IO.inspect(metadata)
     # Strip out unnecessary quotes from the query for readability
     query = Regex.replace(~r/(\d\.)"([^"]+)"/, metadata.query, "\\1\\2")
     params = metadata.params |> Enum.map(&decode_value/1) |> inspect(charlists: false)
