@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 defmodule EctoSparkles.Changesets.Errors do
-
   def error(changeset, []), do: changeset
+
   def error(changeset, [{k, v} | errors]),
     do: error(Changeset.add_error(changeset, k, v), errors)
 
@@ -16,6 +16,7 @@ defmodule EctoSparkles.Changesets.Errors do
     end)
     |> enum_errors()
   end
+
   def changeset_errors_string(changeset, _), do: changeset
 
   defp enum_errors(changeset) do
@@ -28,14 +29,14 @@ defmodule EctoSparkles.Changesets.Errors do
   end
 
   defp do_to_string(val, sep \\ ", ")
+
   defp do_to_string(val, sep) when is_list(val) do
     Enum.map(val, &do_to_string/1)
     |> Enum.filter(& &1)
     |> Enum.join(sep)
   end
+
   defp do_to_string(empty, _) when empty == %{} or empty == "", do: nil
   defp do_to_string(%{} = enum_errors, _), do: enum_errors(enum_errors)
   defp do_to_string(val, _), do: to_string(val)
-
-
 end

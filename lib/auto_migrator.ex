@@ -1,7 +1,7 @@
 defmodule EctoSparkles.AutoMigrator do
-@moduledoc """
-Runs ecto migrations automatically on startup (add this to your app's supervision tree)
-"""
+  @moduledoc """
+  Runs ecto migrations automatically on startup (add this to your app's supervision tree)
+  """
   use GenServer
   require Logger
 
@@ -10,7 +10,6 @@ Runs ecto migrations automatically on startup (add this to your app's supervisio
   end
 
   def init(_) do
-
     startup_migrations()
 
     {:ok, nil}
@@ -23,7 +22,7 @@ Runs ecto migrations automatically on startup (add this to your app's supervisio
         EctoSparkles.Migrator.migrate()
       rescue
         e ->
-          Logger.error("Error when running migrations on startup: #{inspect e}")
+          Logger.error("Error when running migrations on startup: #{inspect(e)}")
 
           :ok
       end

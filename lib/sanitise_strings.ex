@@ -36,11 +36,17 @@ defmodule EctoSparkles.SanitiseStrings do
   """
 
   def strip_all_tags(%Ecto.Changeset{} = changeset, opts \\ []) do
-    sanitise_strings(changeset, opts ++ [scrubber: &HtmlSanitizeEx.strip_tags/1])
+    sanitise_strings(
+      changeset,
+      opts ++ [scrubber: &HtmlSanitizeEx.strip_tags/1]
+    )
   end
 
   def clean_html(%Ecto.Changeset{} = changeset, opts \\ []) do
-    sanitise_strings(changeset, opts ++ [scrubber: &HtmlSanitizeEx.markdown_html/1])
+    sanitise_strings(
+      changeset,
+      opts ++ [scrubber: &HtmlSanitizeEx.markdown_html/1]
+    )
   end
 
   def sanitise_strings(%Ecto.Changeset{} = changeset, opts \\ []) do
@@ -55,7 +61,8 @@ defmodule EctoSparkles.SanitiseStrings do
     %{changeset | changes: sanitized_changes}
   end
 
-  defp scrub_change({field, value}, blacklisted_fields, types, scrubber) when is_binary(value) do
+  defp scrub_change({field, value}, blacklisted_fields, types, scrubber)
+       when is_binary(value) do
     if field in blacklisted_fields do
       {field, value}
     else

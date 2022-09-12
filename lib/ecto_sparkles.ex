@@ -38,11 +38,15 @@ defmodule EctoSparkles do
   ```
   """
 
-  def query_filter(module_or_query, filters, order_by_prop \\ :id, order_direction \\ :desc) do
+  def query_filter(
+        module_or_query,
+        filters,
+        order_by_prop \\ :id,
+        order_direction \\ :desc
+      ) do
     # EctoSparkles.Filter.query_params(module_or_query, filters, order_by_prop, order_direction)
     EctoShorts.filter(module_or_query, filters, order_by_prop, order_direction)
   end
-
 
   @doc """
   `join_preload` is a helper for preloading associations using joins.
@@ -74,40 +78,51 @@ defmodule EctoSparkles do
   |> Repo.all()
   ```
   """
-  defmacro join_preload(query, associations), do: join_preload_impl(query, associations)
+  defmacro join_preload(query, associations),
+    do: join_preload_impl(query, associations)
 
   defp join_preload_impl(query, associations) do
     root = var(:root)
+
     cond do
       is_list(associations) ->
         bindings = preload_bindings(associations)
         expr = preload_expr(associations)
+
         joins(query, associations, [root], :root)
         |> preload_clause(bindings, expr)
+
       is_atom(associations) ->
         expr = quote do: sparkly in assoc(root, unquote(associations))
         preload = [{associations, associations}]
+
         rejoin(query, [root], expr, associations)
         |> preload_clause(preload, preload)
+
       true ->
         raise RuntimeError,
-          "join_preload expected an atom or list of atoms, got: #{inspect(associations)}"
+              "join_preload expected an atom or list of atoms, got: #{inspect(associations)}"
     end
   end
 
   defp joins(query, [], _bindings, _assoc), do: query
+
   defp joins(query, [j | js], bindings, assoc) do
     bs = bindings ++ [{j, var(j)}]
     condition = quote do: sparkly in assoc(unquote(var(assoc)), unquote(j))
+
     rejoin(query, bindings, condition, j)
     |> joins(js, bs, j)
   end
 
   # [a: a], [a: a, b: b], [a: a, b: b, c: c] etc.
-  defp preload_bindings(names), do: Enum.map(names, &{&1, Macro.var(&1, __MODULE__)})
+  defp preload_bindings(names),
+    do: Enum.map(names, &{&1, Macro.var(&1, __MODULE__)})
 
   # [a: {a, [b: b]}], [a: {a, [b: {b, [c: c]}]}] etc.
-  defp preload_expr([last]) when is_atom(last), do: [{last, Macro.var(last, __MODULE__)}]
+  defp preload_expr([last]) when is_atom(last),
+    do: [{last, Macro.var(last, __MODULE__)}]
+
   defp preload_expr([next | rest]) when is_atom(next),
     do: [{next, {Macro.var(next, __MODULE__), preload_expr(rest)}}]
 
@@ -143,13 +158,19 @@ defmodule EctoSparkles do
   # this recurses through the forms generating a join clause at each
   # step, which it pipes the query form through returning a new query form.
   defp proload_join(
-    query,    # a quoted form that evaluates to a query
-    qual,     # left/inner/etc.
-    form,     # the current expression we are translating
-    bindings, # an improper keyword list of nested bindings for our join expr
-    assoc,    # the alias of the thing we are joining from
-    prefix    # current string prefix to prepend to generated aliases
-  ) do
+         # a quoted form that evaluates to a query
+         query,
+         # left/inner/etc.
+         qual,
+         # the current expression we are translating
+         form,
+         # an improper keyword list of nested bindings for our join expr
+         bindings,
+         # the alias of the thing we are joining from
+         assoc,
+         # current string prefix to prepend to generated aliases
+         prefix
+       ) do
     case form do
       # an atom is a simple join
       _ when is_atom(form) ->
@@ -158,9 +179,13 @@ defmodule EctoSparkles do
 
       # lists are simply folded over
       _ when is_list(form) ->
-        Enum.reduce(form, query, &proload_join(&2, qual, &1, bindings, assoc, prefix))
+        Enum.reduce(
+          form,
+          query,
+          &proload_join(&2, qual, &1, bindings, assoc, prefix)
+        )
 
-       # a 2-tuple where the key is a binary extends the prefix
+      # a 2-tuple where the key is a binary extends the prefix
       {pre, form} when is_binary(pre) ->
         proload_join(query, qual, form, bindings, assoc, prefix <> pre)
 
@@ -169,37 +194,52 @@ defmodule EctoSparkles do
         alia = prefix(rel, prefix)
         # now generate a join, aliasing it with a prefix
         expr = quote(do: sparkly in assoc(unquote(var(assoc)), unquote(rel)))
+
         rejoin(query, qual, bindings, expr, alia)
         # and recurse generating the rest of the joins
         |> proload_join(
           qual,
-          form,                            # the nested bit
-          bindings ++ [{alia, var(alia)}], # add our alias to the bindings
-          alia,                            # join from us
-          prefix                           # pass the prefix through
+          # the nested bit
+          form,
+          # add our alias to the bindings
+          bindings ++ [{alia, var(alia)}],
+          # join from us
+          alia,
+          # pass the prefix through
+          prefix
         )
 
       _ ->
         raise RuntimeError,
-          "proload expected an atom, list or 2-tuple, got: #{inspect(form)}"
+              "proload expected an atom, list or 2-tuple, got: #{inspect(form)}"
     end
   end
 
   # figures out the list of bindings to supply to preload. this will
   # include all aliases generated by the specification
   defp proload_preload_bindings(form) do
-    proload_aliases(form) # get a list of all relevant aliases
-    |> Enum.dedup() # for all the good that it will do, try and minimise duplication
-    |> Enum.map(&{&1, var(&1)}) # turn the names into bindings
+    # get a list of all relevant aliases
+    proload_aliases(form)
+    # for all the good that it will do, try and minimise duplication
+    |> Enum.dedup()
+    # turn the names into bindings
+    |> Enum.map(&{&1, var(&1)})
   end
 
   # recursively get a list of all aliases (with prefixes correctly applied)
   defp proload_aliases(form, prefix \\ "") do
     case form do
-      _ when is_atom(form) -> [prefix(form, prefix)]
-      _ when is_list(form) -> Enum.flat_map(form, &proload_aliases(&1, prefix))
-      {pre, form} when is_binary(pre) -> proload_aliases(form, prefix <> pre)
-      {rel, form} when is_atom(rel) -> [prefix(rel, prefix) | proload_aliases(form, prefix)]
+      _ when is_atom(form) ->
+        [prefix(form, prefix)]
+
+      _ when is_list(form) ->
+        Enum.flat_map(form, &proload_aliases(&1, prefix))
+
+      {pre, form} when is_binary(pre) ->
+        proload_aliases(form, prefix <> pre)
+
+      {rel, form} when is_atom(rel) ->
+        [prefix(rel, prefix) | proload_aliases(form, prefix)]
     end
   end
 
@@ -207,9 +247,15 @@ defmodule EctoSparkles do
   # it's really just intercepting prefix tuples and generating aliases.
   defp proload_preload_expr(form, prefix \\ "") do
     case form do
-      _ when is_atom(form)            -> {form, var(prefix(form, prefix))}
-      _ when is_list(form)            -> Enum.map(form, &proload_preload_expr(&1, prefix))
-      {pre, form} when is_binary(pre) -> proload_preload_expr(form, prefix <> pre)
+      _ when is_atom(form) ->
+        {form, var(prefix(form, prefix))}
+
+      _ when is_list(form) ->
+        Enum.map(form, &proload_preload_expr(&1, prefix))
+
+      {pre, form} when is_binary(pre) ->
+        proload_preload_expr(form, prefix <> pre)
+
       {rel, form} when is_atom(rel) ->
         rest = listify(proload_preload_expr(form, prefix))
         {rel, {var(prefix(rel, prefix)), rest}}
@@ -237,11 +283,14 @@ defmodule EctoSparkles do
     reusable_join_impl(query, qual, bindings, expr, opts, as)
   end
 
-  @doc false # i don't think this needs to be public anymore, but it doesn't hurt
+  # i don't think this needs to be public anymore, but it doesn't hurt
+  @doc false
   def reusable_join_impl(query, qual \\ :left, bindings, expr, opts, as) do
     args = [qual, bindings, expr, opts]
+
     quote do
       query = Ecto.Queryable.to_query(unquote(query))
+
       if Enum.any?(query.joins, &(&1.as == unquote(as))),
         do: query,
         else: join(query, unquote_splicing(args))
@@ -256,11 +305,13 @@ defmodule EctoSparkles do
     do: rejoin(query, :left, bindings, expr, [as: as], as)
 
   # not currently used, but handy
-  defp rejoin(query, qual, bindings, expr, opts) when is_atom(qual) and is_list(opts),
-    do: rejoin(query, qual, bindings, expr, opts, Keyword.fetch!(opts, :as))
+  defp rejoin(query, qual, bindings, expr, opts)
+       when is_atom(qual) and is_list(opts),
+       do: rejoin(query, qual, bindings, expr, opts, Keyword.fetch!(opts, :as))
 
-  defp rejoin(query, qual, bindings, expr, as) when is_atom(qual) and is_atom(as),
-    do: rejoin(query, qual, bindings, expr, [as: as], as)
+  defp rejoin(query, qual, bindings, expr, as)
+       when is_atom(qual) and is_atom(as),
+       do: rejoin(query, qual, bindings, expr, [as: as], as)
 
   defp rejoin(query, qual, bindings, expr, opts, as),
     do: reusable_join_impl(query, qual, bindings, expr, opts, as)
@@ -268,14 +319,26 @@ defmodule EctoSparkles do
   # expands aliases and metadata recursively
   defp expand(form, env) do
     case form do
-      {:@,_,_} -> Macro.expand(form, env)
-      {:__aliases__,_,_} -> Macro.expand(form, env)
+      {:@, _, _} ->
+        Macro.expand(form, env)
+
+      {:__aliases__, _, _} ->
+        Macro.expand(form, env)
+
       {k, meta, args} when is_list(args) ->
         {k, meta, Enum.map(args, &expand(&1, env))}
-      {k, v} -> {expand(k, env), expand(v, env)}
-      _ when is_list(form) -> Enum.map(form, &expand(&1, env))
-      _ when is_list(form) -> Enum.map(form, &expand(&1, env))
-      _ -> form
+
+      {k, v} ->
+        {expand(k, env), expand(v, env)}
+
+      _ when is_list(form) ->
+        Enum.map(form, &expand(&1, env))
+
+      _ when is_list(form) ->
+        Enum.map(form, &expand(&1, env))
+
+      _ ->
+        form
     end
   end
 
@@ -293,6 +356,4 @@ defmodule EctoSparkles do
   # i'm sure this one exists in the standard library but i can't seem to find it.
   defp listify(x) when is_list(x), do: x
   defp listify(x), do: [x]
-
-
 end

@@ -6,21 +6,25 @@ defmodule EctoSparkles.Migrator do
 
   def migrate(repo) do
     Logger.info("Migrate #{inspect(repo)}")
+
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
   end
 
   def rollback(repo, step) when not is_nil(repo) do
     Logger.info("Rollback #{inspect(repo)} by #{inspect(step)} step")
+
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, step: step))
   end
 
   def rollback_to(repo, version) do
     Logger.info("Rollback #{inspect(repo)} to version #{inspect(version)}")
+
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
   end
 
   def rollback_all(repo) do
     Logger.info("Rollback #{inspect(repo)}")
+
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, all: true))
   end
 
@@ -32,15 +36,15 @@ defmodule EctoSparkles.Migrator do
 
         {:error, :already_up} ->
           :ok
+
         e ->
-          Logger.error("The database for #{inspect(repo)} could not be created #{inspect e}")
+          Logger.error("The database for #{inspect(repo)} could not be created #{inspect(e)}")
       end
     rescue
       e ->
-        Logger.error("The database for #{inspect(repo)} failed to be created #{inspect e}")
+        Logger.error("The database for #{inspect(repo)} failed to be created #{inspect(e)}")
     end
   end
-
 
   def migrate do
     for repo <- repos(), do: migrate(repo)
@@ -62,7 +66,6 @@ defmodule EctoSparkles.Migrator do
     for repo <- repos(), do: create(repo)
   end
 
-
   defp repos do
     app = Application.fetch_env!(:ecto_sparkles, :otp_app)
     Application.load(app)
@@ -70,41 +73,48 @@ defmodule EctoSparkles.Migrator do
   end
 
   @doc """
-Print the migration status for configured Repos' migrations.
-"""
-def status do
-  for repo <- repos(), do: print_migrations_for(repo)
-end
+  Print the migration status for configured Repos' migrations.
+  """
+  def status do
+    for repo <- repos(), do: print_migrations_for(repo)
+  end
 
-defp print_migrations_for(repo) do
-  paths = repo_migrations_path(repo)
-  |> IO.inspect()
+  defp print_migrations_for(repo) do
+    paths =
+      repo_migrations_path(repo)
+      |> IO.inspect()
 
-  {:ok, repo_status, _} =
-    Ecto.Migrator.with_repo(repo, &Ecto.Migrator.migrations(&1, paths), mode: :temporary)
+    {:ok, repo_status, _} =
+      Ecto.Migrator.with_repo(repo, &Ecto.Migrator.migrations(&1, paths), mode: :temporary)
 
-  IO.puts(
-    """
-    Repo: #{inspect(repo)}
-      Status    Migration ID    Migration Name
-    --------------------------------------------------
-    """ <>
-      Enum.map_join(repo_status, "\n", fn {status, number, description} ->
-        "  #{pad(status, 10)}#{pad(number, 16)}#{description}"
-      end) <> "\n"
-  )
-end
+    IO.puts(
+      """
+      Repo: #{inspect(repo)}
+        Status    Migration ID    Migration Name
+      --------------------------------------------------
+      """ <>
+        Enum.map_join(repo_status, "\n", fn {status, number, description} ->
+          "  #{pad(status, 10)}#{pad(number, 16)}#{description}"
+        end) <> "\n"
+    )
+  end
 
-defp repo_migrations_path(repo) do
-  config = repo.config()
-  priv = config[:priv] || "priv/#{repo |> Module.split() |> List.last() |> Macro.underscore()}"
-  config |> Keyword.fetch!(:otp_app) |> Application.app_dir() |> Path.join(priv)
-end
+  defp repo_migrations_path(repo) do
+    config = repo.config()
 
-defp pad(content, pad) do
-  content
-  |> to_string
-  |> String.pad_trailing(pad)
-end
+    priv =
+      config[:priv] ||
+        "priv/#{repo |> Module.split() |> List.last() |> Macro.underscore()}"
 
+    config
+    |> Keyword.fetch!(:otp_app)
+    |> Application.app_dir()
+    |> Path.join(priv)
+  end
+
+  defp pad(content, pad) do
+    content
+    |> to_string
+    |> String.pad_trailing(pad)
+  end
 end

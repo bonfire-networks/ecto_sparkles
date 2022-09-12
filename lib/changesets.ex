@@ -5,7 +5,6 @@ defmodule EctoSparkles.Changesets do
   alias Ecto.Changeset
   alias Bonfire.Mailer.Checker
 
-
   @spec validate_http_url(Changeset.t(), atom) :: Changeset.t()
   @doc "Validates that a URL uses HTTP(S) and has a correct format."
   def validate_http_url(changeset, field) do
@@ -22,8 +21,8 @@ defmodule EctoSparkles.Changesets do
     scheme in ["http", "https"] && not is_nil(host)
   end
 
-
-  @spec validate_not_expired(Changeset.t(), DateTime.t(), atom, binary) :: Changeset.t()
+  @spec validate_not_expired(Changeset.t(), DateTime.t(), atom, binary) ::
+          Changeset.t()
   @doc "Validates that the entity has not expired"
   def validate_not_expired(
         cs,
@@ -39,7 +38,6 @@ defmodule EctoSparkles.Changesets do
         end
     end
   end
-
 
   @spec change_synced_timestamp(Changeset.t(), atom, atom) :: Changeset.t()
   @doc """
@@ -67,15 +65,28 @@ defmodule EctoSparkles.Changesets do
     end
   end
 
-  @spec change_synced_timestamps(Changeset.t(), atom, atom, atom, atom) :: Changeset.t()
+  @spec change_synced_timestamps(Changeset.t(), atom, atom, atom, atom) ::
+          Changeset.t()
   @doc """
   If a changeset includes a change to `bool_field`, we change two
   timestamps columns (representing activated and deactivated) so that
   only one is set to a non-null value at a time.
   """
-  def change_synced_timestamps(changeset, bool_field, on_field, off_field, default \\ true)
+  def change_synced_timestamps(
+        changeset,
+        bool_field,
+        on_field,
+        off_field,
+        default \\ true
+      )
 
-  def change_synced_timestamps(changeset, bool_field, on_field, off_field, default)
+  def change_synced_timestamps(
+        changeset,
+        bool_field,
+        on_field,
+        off_field,
+        default
+      )
       when is_atom(bool_field) and is_atom(on_field) and
              is_atom(off_field) and is_boolean(default) do
     case Changeset.fetch_change(changeset, bool_field) do
@@ -102,7 +113,14 @@ defmodule EctoSparkles.Changesets do
 
           :error ->
             cs = Changeset.put_change(changeset, bool_field, default)
-            change_synced_timestamps(cs, bool_field, on_field, off_field, default)
+
+            change_synced_timestamps(
+              cs,
+              bool_field,
+              on_field,
+              off_field,
+              default
+            )
         end
     end
   end
@@ -139,5 +157,4 @@ defmodule EctoSparkles.Changesets do
   #     end
   #   end)
   # end
-
 end
