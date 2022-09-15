@@ -6,9 +6,9 @@ defmodule EctoSparkles.Log do
   Log slow Ecto queries
   """
 
-  @exclude_sources ["oban_jobs"]
+  @exclude_sources ["oban_jobs", "oban_peers"]
   @exclude_queries ["commit", "begin"]
-  @exclude_match ["oban_jobs", "pg_try_advisory_xact_lock"]
+  @exclude_match ["oban_jobs", "oban_peers", "oban_insert", "pg_notify", "pg_try_advisory_xact_lock"]
 
   def setup(repo_module) do
     config = repo_module.config()
