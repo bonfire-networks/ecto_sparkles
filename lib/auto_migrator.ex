@@ -20,6 +20,7 @@ defmodule EctoSparkles.AutoMigrator do
       try do
         EctoSparkles.Migrator.create()
         EctoSparkles.Migrator.migrate()
+        EctoSparkles.Migrator.status()
       rescue
         e ->
           Logger.error("Error when running migrations on startup: #{inspect(e)}")

@@ -82,7 +82,7 @@ defmodule EctoSparkles.Migrator do
   defp print_migrations_for(repo) do
     paths =
       repo_migrations_path(repo)
-      |> IO.inspect()
+      |> IO.inspect(label: "Paths")
 
     {:ok, repo_status, _} =
       Ecto.Migrator.with_repo(repo, &Ecto.Migrator.migrations(&1, paths), mode: :temporary)
