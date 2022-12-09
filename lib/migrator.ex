@@ -106,8 +106,8 @@ defmodule EctoSparkles.Migrator do
       config[:priv] ||
         "priv/#{repo |> Module.split() |> List.last() |> Macro.underscore()}"
 
-    config
-    |> Keyword.fetch!(:otp_app)
+
+    (Keyword.get(config, :umbrella_otp_app) || Keyword.fetch!(config, :otp_app))
     |> Application.app_dir()
     |> Path.join(priv)
   end
