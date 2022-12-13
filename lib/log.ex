@@ -142,10 +142,15 @@ defmodule EctoSparkles.Log do
 
   def format_log(result, duration_in_ms, measurements, metadata) do
     # IO.inspect(metadata)
-    # Strip out unnecessary quotes from the query for readability
-    query = Regex.replace(~r/(\d\.)"([^"]+)"/, metadata.query, "\\1\\2")
+    repo_adapter = metadata[:repo].__adapter__()
 
-    params = metadata.params |> Enum.map(&decode_value/1) |> inspect(charlists: false)
+    params = metadata.params |> Enum.map(&decode_value/1)
+    #|> inspect(charlists: false)
+
+    # Strip out unnecessary quotes from the query for readability
+    # Regex.replace(~r/(\d\.)"([^"]+)"/, metadata.query, "\\1\\2")
+    query = metadata.query
+    |> Ecto.DevLogger.inline_params(params, sql_color(metadata.query), repo_adapter)
 
     source = if metadata.source, do: "source=#{inspect(metadata.source)}"
 
@@ -158,7 +163,8 @@ defmodule EctoSparkles.Log do
       _ -> nil
     end
 
-    "#{result} db=#{duration_in_ms}ms #{source}\n  #{query} \n  params=#{params} \n#{stacktrace}"
+    # \n  params=#{params}
+    "#{result} db=#{duration_in_ms}ms #{source}\n  #{query} \n#{stacktrace}"
   end
 
   defp decode_value(value) when is_list(value) do
@@ -176,4 +182,14 @@ defmodule EctoSparkles.Log do
   defp decode_value(%Ecto.Query.Tagged{value: value}), do: decode_value(value)
 
   defp decode_value(value), do: value
+
+  defp sql_color("SELECT" <> _), do: :cyan
+  defp sql_color("ROLLBACK" <> _), do: :red
+  defp sql_color("LOCK" <> _), do: :white
+  defp sql_color("INSERT" <> _), do: :green
+  defp sql_color("UPDATE" <> _), do: :yellow
+  defp sql_color("DELETE" <> _), do: :red
+  defp sql_color("begin" <> _), do: :magenta
+  defp sql_color("commit" <> _), do: :magenta
+  defp sql_color(_), do: :default_color
 end
