@@ -145,7 +145,7 @@ defmodule EctoSparkles do
 
   defp proload_impl(query, qual, associations, caller) do
     # we want to expand metadata references
-    associations = listify(expand(associations, caller))
+    associations = List.wrap(expand(associations, caller))
     # iterate over the form, generating nested join clauses
     proload_join(query, qual, associations, [var(:root)], :root, "")
     # pipe that into a preload expression
@@ -209,6 +209,9 @@ defmodule EctoSparkles do
           prefix
         )
 
+      {:^, _, _} ->
+        query
+
       _ ->
         raise RuntimeError,
               "proload expected an atom, list or 2-tuple, got: #{inspect(form)}"
@@ -240,6 +243,9 @@ defmodule EctoSparkles do
 
       {rel, form} when is_atom(rel) ->
         [prefix(rel, prefix) | proload_aliases(form, prefix)]
+      
+      {:^, _, _} ->
+        []
     end
   end
 
@@ -248,17 +254,20 @@ defmodule EctoSparkles do
   defp proload_preload_expr(form, prefix \\ "") do
     case form do
       _ when is_atom(form) ->
-        {form, var(prefix(form, prefix))}
+        [{form, var(prefix(form, prefix))}]
 
       _ when is_list(form) ->
-        Enum.map(form, &proload_preload_expr(&1, prefix))
+        Enum.map(form, &proload_preload_expr(&1, prefix)) 
 
       {pre, form} when is_binary(pre) ->
         proload_preload_expr(form, prefix <> pre)
 
       {rel, form} when is_atom(rel) ->
-        rest = listify(proload_preload_expr(form, prefix))
-        {rel, {var(prefix(rel, prefix)), rest}}
+        {rel, {var(prefix(rel, prefix)), proload_preload_expr(form, prefix)}}
+
+      {:^, _, _} ->
+        IO.warn("TODO: support preload with pinned function or query: https://hexdocs.pm/ecto/Ecto.Query.html#preload/3-preload-queries, got: #{inspect(form)}")
+        form
     end
   end
 
@@ -334,9 +343,6 @@ defmodule EctoSparkles do
       _ when is_list(form) ->
         Enum.map(form, &expand(&1, env))
 
-      _ when is_list(form) ->
-        Enum.map(form, &expand(&1, env))
-
       _ ->
         form
     end
@@ -347,13 +353,14 @@ defmodule EctoSparkles do
     do: quote(do: Ecto.Query.preload(unquote(query), unquote(bindings), unquote(expr)))
 
   # creates a var private to this module
-  defp var(name), do: Macro.var(name, __MODULE__)
+  defp var(name) do
+    # IO.warn(inspect name)
+    Macro.var(name, __MODULE__)
+  end
 
   # applies the current prefix for projoin
   defp prefix(x, y) when is_atom(x), do: prefix(Atom.to_string(x), y)
-  defp prefix(x, y), do: String.to_atom(y <> x)
+  defp prefix(x, y) when is_binary(x), do: String.to_atom(y <> x)
 
-  # i'm sure this one exists in the standard library but i can't seem to find it.
-  defp listify(x) when is_list(x), do: x
-  defp listify(x), do: [x]
+
 end
