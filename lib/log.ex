@@ -158,7 +158,7 @@ defmodule EctoSparkles.Log do
     stacktrace = case metadata[:stacktrace] do
       stacktrace when is_list(stacktrace) ->
         stacktrace
-        |> Enum.slice(3, 5)
+        |> Enum.slice(2, 4)
         |> Exception.format_stacktrace()
       _ -> nil
     end
