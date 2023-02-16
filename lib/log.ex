@@ -8,7 +8,7 @@ defmodule EctoSparkles.Log do
 
   @exclude_sources ["oban_jobs", "oban_peers"]
   @exclude_queries ["commit", "begin"]
-  @exclude_match ["oban_jobs", "oban_peers", "oban_insert", "pg_notify", "pg_try_advisory_xact_lock"]
+  @exclude_match ["oban_jobs", "oban_peers", "oban_insert", "pg_notify", "pg_try_advisory_xact_lock", "schema_migrations"]
 
   def setup(repo_module) do
     config = repo_module.config()
