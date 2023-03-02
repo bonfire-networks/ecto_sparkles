@@ -20,7 +20,7 @@ defmodule EctoSparkles.ErlangTermBinary do
   the desired term.
   """
   def load(raw_binary) when is_binary(raw_binary),
-    do: {:ok, :erlang.binary_to_term(raw_binary)}
+    do: {:ok, Plug.Crypto.non_executable_binary_to_term(raw_binary)} #, [:safe]
 
   @doc """
   Converting the data structure to binary for storage.
