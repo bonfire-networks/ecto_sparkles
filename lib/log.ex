@@ -144,13 +144,13 @@ defmodule EctoSparkles.Log do
     # IO.inspect(metadata)
     repo_adapter = metadata[:repo].__adapter__()
 
-    params = metadata.params |> Enum.map(&decode_value/1)
+    params = metadata.params 
+    |> Enum.map(&decode_value/1)
     #|> inspect(charlists: false)
 
     # Strip out unnecessary quotes from the query for readability
     # Regex.replace(~r/(\d\.)"([^"]+)"/, metadata.query, "\\1\\2")
-    query = metadata.query
-    |> Ecto.DevLogger.inline_params(params, sql_color(metadata.query), repo_adapter)
+    query = inline_params(metadata.query, params, repo_adapter)
 
     source = if metadata.source, do: "source=#{inspect(metadata.source)}"
 
@@ -165,6 +165,11 @@ defmodule EctoSparkles.Log do
 
     # \n  params=#{params}
     "#{result} db=#{duration_in_ms}ms #{source}\n  #{query} \n#{stacktrace}"
+  end
+
+  def inline_params(query, params, repo_adapter \\ Ecto.Adapters.SQL) do
+    query
+    |> Ecto.DevLogger.inline_params(params, sql_color(query), repo_adapter)
   end
 
   defp decode_value(value) when is_list(value) do
