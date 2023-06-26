@@ -82,7 +82,7 @@ defmodule EctoSparkles.Log do
     {result, _} = metadata.result
 
     if duration_in_ms > slow_definition_in_ms do
-      Logger.warn(
+      Logger.warning(
         "Slow database query: " <>
           format_log(result, duration_in_ms, measurements, metadata)
       )
