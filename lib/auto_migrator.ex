@@ -10,13 +10,14 @@ defmodule EctoSparkles.AutoMigrator do
   end
 
   def init(_) do
-    startup_migrations()
+    if is_nil(System.get_env("DISABLE_DB_AUTOMIGRATION")) do
+      startup_migrations()
+    end
 
     {:ok, nil}
   end
 
   def startup_migrations() do
-    if is_nil(System.get_env("DISABLE_DB_AUTOMIGRATION")) do
       try do
         EctoSparkles.Migrator.create()
         EctoSparkles.Migrator.migrate()
@@ -27,6 +28,5 @@ defmodule EctoSparkles.AutoMigrator do
 
           :ok
       end
-    end
   end
 end
