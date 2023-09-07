@@ -93,7 +93,7 @@ defmodule EctoSparkles.Log do
 
   defp check_if_slow(duration_in_ms, measurements, metadata) do
     {result_key, _} = metadata.result
-    log_query(result, duration_in_ms, measurements, metadata)
+    log_query(result_key, duration_in_ms, measurements, metadata)
   end
 
   def log_query(result_key, duration_in_ms, measurements, metadata)
