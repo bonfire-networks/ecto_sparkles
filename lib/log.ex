@@ -35,14 +35,14 @@ defmodule EctoSparkles.Log do
         _,
         measurements,
         %{query: query, source: source} = metadata,
-        config
+        _config
       )
       when (is_nil(source) or source not in @exclude_sources) and
              query not in @exclude_queries do
     do_handle_event(measurements, metadata)
   end
 
-  def handle_event(_, measurements, metadata, config) do
+  def handle_event(_, _measurements, _metadata, _config) do
     # IO.inspect(metadata, label: "EctoSparkles: ignoring ecto log")
     nil
   end
@@ -92,21 +92,21 @@ defmodule EctoSparkles.Log do
   end
 
   defp check_if_slow(duration_in_ms, measurements, metadata) do
-    {result, _} = metadata.result
+    {result_key, _} = metadata.result
     log_query(result, duration_in_ms, measurements, metadata)
   end
 
-  def log_query(result, duration_in_ms, measurements, metadata)
-      when result in [:error, "error"] do
+  def log_query(result_key, duration_in_ms, measurements, metadata)
+      when result_key in [:error, "error"] do
     if not String.contains?(metadata.query, @exclude_match),
       do:
         Logger.error(
           "SQL query: " <>
-            format_log(result, duration_in_ms, measurements, metadata)
+            format_log(result_key, duration_in_ms, measurements, metadata)
         )
   end
 
-  def log_query(result, duration_in_ms, measurements, metadata) do
+  def log_query(result_key, duration_in_ms, measurements, metadata) do
     level = String.to_atom(System.get_env("DB_QUERIES_LOG_LEVEL", "debug"))
 
     if level && not String.contains?(metadata.query, @exclude_match) do
@@ -116,14 +116,14 @@ defmodule EctoSparkles.Log do
         is_integer(count_n_plus_1) ->
           Logger.warning(
             "---------> Possible n+1 query detected! Number of occurrences: #{count_n_plus_1} SQL query: " <>
-              format_log(result, duration_in_ms, measurements, metadata)
+              format_log(result_key, duration_in_ms, measurements, metadata)
           )
 
         not is_nil(level) ->
          Logger.log(
           level,
           "SQL query: " <>
-            format_log(result, duration_in_ms, measurements, metadata)
+            format_log(result_key, duration_in_ms, measurements, metadata)
           )
 
         true -> # skip
@@ -140,7 +140,7 @@ defmodule EctoSparkles.Log do
     end
   end
 
-  def format_log(result, duration_in_ms, measurements, metadata) do
+  def format_log(result_key, duration_in_ms, measurements, metadata) do
     # IO.inspect(metadata)
     repo_adapter = metadata[:repo].__adapter__()
 
@@ -164,7 +164,7 @@ defmodule EctoSparkles.Log do
     end
 
     # \n  params=#{params}
-    "#{result} db=#{duration_in_ms}ms #{source}\n  #{query} \n#{stacktrace}"
+    "#{result_key} db=#{duration_in_ms}ms #{source}\n  #{query} \n#{stacktrace}"
   end
 
   def inline_params(query, params, repo_adapter \\ Ecto.Adapters.SQL) do

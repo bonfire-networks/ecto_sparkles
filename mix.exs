@@ -20,7 +20,7 @@ defmodule EctoSparkles.Project do
     [
       {:ecto, "~> 3.8"},
       {:ecto_sql, "~> 3.8"},
-      {:ecto_dev_logger, "~> 0.7"},
+      {:ecto_dev_logger, "~> 0.9"},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:recase, "~> 0.7"},
       {:untangle, "~> 0.1"},
