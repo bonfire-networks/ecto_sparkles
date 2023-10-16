@@ -142,7 +142,6 @@ defmodule EctoSparkles.Log do
 
   def format_log(result_key, duration_in_ms, measurements, metadata) do
     # IO.inspect(metadata)
-    repo_adapter = metadata[:repo].__adapter__()
 
     params = metadata.params 
     |> Enum.map(&decode_value/1)
@@ -150,22 +149,20 @@ defmodule EctoSparkles.Log do
 
     # Strip out unnecessary quotes from the query for readability
     # Regex.replace(~r/(\d\.)"([^"]+)"/, metadata.query, "\\1\\2")
-    query = inline_params(metadata.query, params, repo_adapter)
 
     source = if metadata.source, do: "source=#{inspect(metadata.source)}"
 
-    # IO.inspect(metadata)
-    stacktrace = case metadata[:stacktrace] do
-      stacktrace when is_list(stacktrace) ->
-        stacktrace
-        |> Enum.slice(2, 5)
-        |> Exception.format_stacktrace()
-      _ -> nil
-    end
-
     # \n  params=#{params}
-    "#{result_key} db=#{duration_in_ms}ms #{source}\n  #{query} \n#{stacktrace}"
+    "#{result_key} db=#{duration_in_ms}ms #{source}\n  #{inline_params(metadata.query, params, metadata[:repo].__adapter__())} \n#{format_stacktrace_sliced(metadata[:stacktrace])}"
   end
+
+  def format_stacktrace_sliced(stacktrace, starts \\ 2, ends \\ 5) 
+  def format_stacktrace_sliced(stacktrace, starts, ends) when is_list(stacktrace)  do
+        stacktrace
+        |> Enum.slice(starts, ends)
+        |> Exception.format_stacktrace()
+  end
+  def format_stacktrace_sliced(_stacktrace, _, _), do: nil
 
   def inline_params(query, params, repo_adapter \\ Ecto.Adapters.SQL) do
     query
