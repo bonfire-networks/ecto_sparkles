@@ -4,9 +4,10 @@ Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html)
 
 - [`join_preload`](#join_preload-documentation)
 - [`reusable_join`](#reusablejoin-documentation)
-- `EctoSparkles.Changesets` with various changeset helpers and validators and `EctoSparkles.Changesets.Errors` to handle changeset errors
-- `EctoSparkles.Migrator` to run migrations, rollbacks, etc in a release
-- `EctoSparkles.Log` to log slow or possible N+1 queries with telemetry (showing stacktraces)
+- `Migrator` to run migrations, rollbacks, etc in a release and `AutoMigrator` to automatically run them at startup.
+- `DataMigration`: a behaviour implemented for data migrations (generally backfills).
+- `Log` to log slow or possible N+1 queries with telemetry (showing stacktraces)
+- `Changesets` with various changeset helpers and validators and `Changesets.Errors` to handle changeset errors
 
 NOTE: you need to put something like `config :ecto_sparkles, :otp_app, :your_otp_app_name` in your app's config.
 

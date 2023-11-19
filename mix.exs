@@ -24,6 +24,7 @@ defmodule EctoSparkles.Project do
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:recase, "~> 0.7"},
       {:untangle, "~> 0.1"},
+      {:typedstruct, "~> 0.5.2"},
       {:ecto_shorts,
        git: "https://github.com/bonfire-networks/ecto_shorts",
        branch: "refactor/attempt1"},
