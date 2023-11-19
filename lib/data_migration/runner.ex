@@ -22,10 +22,10 @@ defmodule EctoSparkles.DataMigration.Runner do
   end
 
 
-  defp throttle_change_in_batches(migration_module, config, last_id)
-  defp throttle_change_in_batches(_migration_module, _, nil), do: :ok
-  defp throttle_change_in_batches(migration_module, config, last_id) do
-
+  defp throttle_change_in_batches(migration_module, config, last_id, batch_i \\ 1)
+  defp throttle_change_in_batches(_migration_module, _, nil, _), do: :ok
+  defp throttle_change_in_batches(migration_module, config, last_id, batch_i) do
+    
     query =
       migration_module.base_query()
       |> where([i], i.id > ^last_id)
@@ -34,15 +34,19 @@ defmodule EctoSparkles.DataMigration.Runner do
 
     case config.repo.all(query, log: :info, timeout: :infinity) do
       [] ->
+        IO.puts("DataMigration: Done")
         # Occurs when no more elements match the query; the migration is done!
         :ok
 
       query_results ->
+
+        IO.puts("DataMigration: Start batch #{batch_i} - above ID #{last_id}")
+
         migration_module.migrate(query_results)
         Process.sleep(config.throttle_ms)
 
         last_processed_id = List.last(query_results).id
-        throttle_change_in_batches(migration_module, config, last_processed_id)
+        throttle_change_in_batches(migration_module, config, last_processed_id, batch_i+1)
     end
   end
 end
