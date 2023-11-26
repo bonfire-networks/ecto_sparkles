@@ -28,21 +28,30 @@ defmodule EctoSparkles.Migrator do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, all: true))
   end
 
-  def create(repo) do
+  def create(repo, attempt \\ 0) do
     try do
       case repo.__adapter__.storage_up(repo.config) do
         :ok ->
           Logger.info("The database for #{inspect(repo)} has been created")
+          :ok
 
         {:error, :already_up} ->
           :ok
 
         e ->
-          Logger.error("The database for #{inspect(repo)} could not be created #{inspect(e)}")
+          Logger.warn("The database for #{inspect(repo)} could not be created: #{inspect(e)}")
+
+          if attempt < 10 do
+            # wait for Postgres to be up
+            Process.sleep(1000)
+            create(repo, attempt + 1)
+          else
+            Logger.warn("After 10 attempts, the database for #{inspect(repo)} still could not be created: #{inspect(e)}")
+          end
       end
     rescue
       e ->
-        Logger.error("The database for #{inspect(repo)} failed to be created #{inspect(e)}")
+        Logger.error("The database for #{inspect(repo)} failed to be created: #{inspect(e)}")
     end
   end
 
