@@ -5,6 +5,7 @@ defmodule EctoSparkles.ErlangTermBinary do
   underlying DB field to be a binary.
   """
   use Ecto.Type
+  import Untangle
 
   def type, do: :binary
 
@@ -25,8 +26,14 @@ defmodule EctoSparkles.ErlangTermBinary do
   """
   if Application.compile_env!(:ecto_sparkles, :env)==:prod do
     IO.puts("EctoSparkles.ErlangTermBinary: will be used in safe mode")
-    def load(raw_binary) when is_binary(raw_binary),
-      do: {:ok, Plug.Crypto.non_executable_binary_to_term(raw_binary, [:safe])} 
+    def load(raw_binary) when is_binary(raw_binary) do
+      {:ok, Plug.Crypto.non_executable_binary_to_term(raw_binary, [:safe])} 
+    rescue 
+      e in ArgumentError -> 
+        # FIXME: find another approach 
+        error(e, "!!! Could not deserialize term from DB, falling back to unsafe")
+        {:ok, Plug.Crypto.non_executable_binary_to_term(raw_binary) |> info()} 
+    end
   else
     IO.puts("EctoSparkles.ErlangTermBinary: will be used in unsafe mode")
     def load(raw_binary) when is_binary(raw_binary),

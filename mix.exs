@@ -25,10 +25,12 @@ defmodule EctoSparkles.Project do
       {:recase, "~> 0.7"},
       {:untangle, "~> 0.1"},
       {:typedstruct, "~> 0.5.2"},
+      {:html_sanitize_ex, "~> 1.4.2", optional: true},
       {:ecto_shorts,
        git: "https://github.com/bonfire-networks/ecto_shorts",
        branch: "refactor/attempt1"},
-      {:html_sanitize_ex, "~> 1.4.2", optional: true}
+       {:untangle,
+       git: "https://github.com/bonfire-networks/untangle"}
     ]
   end
 end
