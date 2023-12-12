@@ -18,9 +18,20 @@ defmodule EctoSparkles.ErlangTermBinary do
   @doc """
   Convert the raw binary value from the database back to
   the desired term.
+
+  Uses `Plug.Crypto.non_executable_binary_to_term/2` - a restricted version of `:erlang.binary_to_term/2` that forbids executable terms, such as anonymous functions.
+
+  By default this function does not restrict atoms, except if compiled in prod env, then the [:safe] option is set, so only existing (and loaded) atoms will be deserialized.
   """
-  def load(raw_binary) when is_binary(raw_binary),
-    do: {:ok, Plug.Crypto.non_executable_binary_to_term(raw_binary)} #, [:safe]
+  if Application.compile_env!(:ecto_sparkles, :env)==:prod do
+    IO.puts("EctoSparkles.ErlangTermBinary: will be used in safe mode")
+    def load(raw_binary) when is_binary(raw_binary),
+      do: {:ok, Plug.Crypto.non_executable_binary_to_term(raw_binary, [:safe])} 
+  else
+    IO.puts("EctoSparkles.ErlangTermBinary: will be used in unsafe mode")
+    def load(raw_binary) when is_binary(raw_binary),
+      do: {:ok, Plug.Crypto.non_executable_binary_to_term(raw_binary)} 
+  end
 
   @doc """
   Converting the data structure to binary for storage.
