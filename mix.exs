@@ -23,13 +23,11 @@ defmodule EctoSparkles.Project do
       {:ecto_dev_logger, "~> 0.9"},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:recase, "~> 0.7"},
-      {:untangle, "~> 0.1"},
+      {:untangle, "~> 0.3"},
       {:html_sanitize_ex, "~> 1.4.2", optional: true},
       {:ecto_shorts,
        git: "https://github.com/bonfire-networks/ecto_shorts",
-       branch: "refactor/attempt1"},
-       {:untangle,
-       git: "https://github.com/bonfire-networks/untangle"}
+       branch: "refactor/attempt1"}
     ]
   end
 end

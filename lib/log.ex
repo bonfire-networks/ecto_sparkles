@@ -174,7 +174,7 @@ defmodule EctoSparkles.Log do
   end
 
   defp decode_value(binary) when is_binary(binary) do
-    with {:ok, ulid} <- Pointers.ULID.load(binary) do
+    with {:ok, ulid} <- Needle.ULID.load(binary) do
       ulid
     else
       _ -> binary
