@@ -3,7 +3,7 @@
 Some helpers to sparkle on top of [Ecto](https://hexdocs.pm/ecto/Ecto.html) 
 
 - [`EctoSparkles.proload/3`](#proload-documentation) and `EctoSparkles.join_preload/2` to join and preload associations with less verbosity
-- [`EctoSparkles.reusable_join/5`](#reusablejoin-documentation) to avoid duplicating joins 
+- [`EctoSparkles.reusable_join/5`](#reusable_join-documentation) to avoid duplicating joins 
 - `EctoSparkles.Migrator` to run migrations, rollbacks, etc in a release and `EctoSparkles.AutoMigrator` to automatically run them at startup.
 - `EctoSparkles.DataMigration`: a behaviour implemented for data migrations (generally backfills).
 - `EctoSparkles.Log` to log slow or possible N+1 queries with telemetry (showing stacktraces)
@@ -71,7 +71,7 @@ and:
 
 ## `reusable_join` documentation
 
-A macro is similar to `Ecto.Query.join/{4,5}`, but can be called multiple times 
+A macro similar to `Ecto.Query.join/{4,5}`, but can be called multiple times 
 with the same alias.
 
 Note that only the first join operation is performed, the subsequent ones that use the same alias
