@@ -4,11 +4,30 @@ defmodule EctoSparkles.Project do
   def project do
     [
       app: :ecto_sparkles,
-      version: "0.1.0",
+      version: "0.1.2",
+      description: "Helper library to better join + preload Ecto associations, and other goodies",
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      description: "Helper library to better join + preload ecto associations"
+      package: package(),
+      docs: docs()
+    ]
+  end
+
+  defp package do
+    [
+      maintainers: ["Bonfire Networks"],
+      licenses: ["Apache 2.0"],
+      links: %{"GitHub" => "https://github.com/bonfire-networks/ecto_sparkles"},
+      files: ~w(mix.exs README.md lib config)
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md"],
+      source_url: "https://github.com/bonfire-networks/ecto_sparkles"
     ]
   end
 
@@ -24,10 +43,7 @@ defmodule EctoSparkles.Project do
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:recase, "~> 0.7"},
       {:untangle, "~> 0.3"},
-      {:html_sanitize_ex, "~> 1.4.2", optional: true},
-      {:ecto_shorts,
-       git: "https://github.com/bonfire-networks/ecto_shorts",
-       branch: "refactor/attempt1"}
+      {:html_sanitize_ex, "~> 1.4.2", optional: true}
     ]
   end
 end
