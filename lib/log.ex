@@ -77,6 +77,7 @@ defmodule EctoSparkles.Log do
 
   defp check_if_slow(duration_in_ms, measurements, %{query: query} = metadata)
       when duration_in_ms > 10 do
+    # TODO: get config in more generic way
     slow_definition_in_ms = Bonfire.Common.Config.get([Bonfire.Common.Repo, :slow_query_ms], 100)
 
     {result, _} = metadata.result
