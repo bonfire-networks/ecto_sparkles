@@ -74,5 +74,5 @@ defmodule EctoSparkles.SanitiseStrings do
     end
   end
 
-  defp scrub_change(change, _, _), do: change
+  defp scrub_change(change, _, _, _), do: change
 end
