@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 defmodule EctoSparkles do
   import Ecto, only: [assoc: 2]
+  import Untangle
 
   @doc """
   `join_preload` is a helper for preloading associations using joins.
@@ -101,7 +102,7 @@ defmodule EctoSparkles do
     # we want to expand metadata references
     associations = List.wrap(expand(associations, caller))
     # iterate over the form, generating nested join clauses
-    proload_join(query, qual, associations, [var(:root)], :root, "")
+    proload_join(query, qual, associations, [var(:root)], :root, "", caller)
     # pipe that into a preload expression
     |> preload_clause(
       proload_preload_bindings(associations),
@@ -123,33 +124,33 @@ defmodule EctoSparkles do
          # the alias of the thing we are joining from
          assoc,
          # current string prefix to prepend to generated aliases
-         prefix
+         prefix, 
+         caller
        ) do
     case form do
       # an atom is a simple join
       _ when is_atom(form) ->
-        expr = quote do: sparkly in assoc(unquote(var(assoc)), unquote(form))
-        rejoin(query, qual, bindings, expr, prefix(form, prefix))
+        alia = prefix(form, prefix)
+
+        maybe_rejoin(query, qual, bindings, assoc, form, alia, caller)
 
       # lists are simply folded over
       _ when is_list(form) ->
         Enum.reduce(
           form,
           query,
-          &proload_join(&2, qual, &1, bindings, assoc, prefix)
+          &proload_join(&2, qual, &1, bindings, assoc, prefix, caller)
         )
 
       # a 2-tuple where the key is a binary extends the prefix
       {pre, form} when is_binary(pre) ->
-        proload_join(query, qual, form, bindings, assoc, prefix <> pre)
+        proload_join(query, qual, form, bindings, assoc, prefix <> pre, caller)
 
       # a 2-tuple where the key is an atom names an association
       {rel, form} when is_atom(rel) ->
         alia = prefix(rel, prefix)
         # now generate a join, aliasing it with a prefix
-        expr = quote(do: sparkly in assoc(unquote(var(assoc)), unquote(rel)))
-
-        rejoin(query, qual, bindings, expr, alia)
+        maybe_rejoin(query, qual, bindings, assoc, rel, alia, caller)
         # and recurse generating the rest of the joins
         |> proload_join(
           qual,
@@ -160,7 +161,8 @@ defmodule EctoSparkles do
           # join from us
           alia,
           # pass the prefix through
-          prefix
+          prefix, 
+          caller
         )
 
       {:^, _, _} ->
@@ -170,6 +172,20 @@ defmodule EctoSparkles do
         raise RuntimeError,
               "proload expected an atom, list or 2-tuple, got: #{inspect(form)}"
     end
+  end
+
+  defp maybe_rejoin(query, qual, bindings, assoc, rel, alia, caller) do
+    # debug(query)
+    # debug(bindings)
+    # debug(assoc)
+    # debug(rel)
+    # TODO: only join assocs that exist
+    # assoc_exists?(query, assoc, rel, caller)
+    # |> debug()
+
+    # if schema.__schema__(:association, unquote(rel))
+    expr = quote(do: sparkly in assoc(unquote(var(assoc)), unquote(rel)))
+    rejoin(query, qual, bindings, expr, alia)
   end
 
   # figures out the list of bindings to supply to preload. this will
@@ -315,6 +331,7 @@ defmodule EctoSparkles do
   # applies the current prefix for projoin
   defp prefix(x, y) when is_atom(x), do: prefix(Atom.to_string(x), y)
   defp prefix(x, y) when is_binary(x), do: String.to_atom(y <> x)
+
 
 
 end
