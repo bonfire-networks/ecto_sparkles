@@ -39,7 +39,7 @@ defmodule EctoSparkles.Log do
       )
       when (is_nil(source) or source not in @exclude_sources) and
              query not in @exclude_queries do
-    handle_event(measurements, metadata)
+    do_handle_event(measurements, metadata)
   end
 
   def handle_event(_, _measurements, _metadata, _config) do
@@ -47,7 +47,7 @@ defmodule EctoSparkles.Log do
     nil
   end
 
-  defp handle_event(
+  defp do_handle_event(
          %{query_time: query_time, decode_time: decode_time} = measurements,
          %{query: query, source: source} = metadata
        ) do
@@ -59,7 +59,7 @@ defmodule EctoSparkles.Log do
     )
   end
 
-  defp handle_event(
+  defp do_handle_event(
          %{query_time: query_time} = measurements,
          %{query: query, source: source} = metadata
        ) do
@@ -70,7 +70,7 @@ defmodule EctoSparkles.Log do
     )
   end
 
-  defp handle_event(measurements, metadata) do
+  defp do_handle_event(measurements, metadata) do
     {result, _} = metadata.result
     log_query(result, nil, measurements, metadata)
   end
