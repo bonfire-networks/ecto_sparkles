@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 defmodule EctoSparkles.Log do
-  require Logger
+  use Untangle
 
   @moduledoc """
   Log slow Ecto queries
@@ -142,10 +142,8 @@ defmodule EctoSparkles.Log do
   end
 
   def format_log(result_key, duration_in_ms, measurements, metadata) do
-    # IO.inspect(metadata)
-
     params = metadata.params 
-    |> Enum.map(&decode_value/1)
+    |> Enum.map(&prepare_value/1)
     #|> inspect(charlists: false)
 
     # Strip out unnecessary quotes from the query for readability
@@ -157,34 +155,26 @@ defmodule EctoSparkles.Log do
     "#{result_key} db=#{duration_in_ms}ms #{source}\n  #{inline_params(metadata.query, params, metadata[:repo].__adapter__())} \n#{format_stacktrace_sliced(metadata[:stacktrace])}"
   end
 
-  def format_stacktrace_sliced(stacktrace, starts \\ 2, ends \\ 5) 
-  def format_stacktrace_sliced(stacktrace, starts, ends) when is_list(stacktrace)  do
-        stacktrace
-        |> Enum.slice(starts, ends)
-        |> Exception.format_stacktrace()
-  end
-  def format_stacktrace_sliced(_stacktrace, _, _), do: nil
-
   def inline_params(query, params, repo_adapter \\ Ecto.Adapters.SQL) do
     query
     |> Ecto.DevLogger.inline_params(params, sql_color(query), repo_adapter)
   end
 
-  defp decode_value(value) when is_list(value) do
-    Enum.map(value, &decode_value/1)
+  defp prepare_value(value) when is_list(value) do
+    Enum.map(value, &prepare_value/1)
   end
-
-  defp decode_value(binary) when is_binary(binary) do
+  defp prepare_value("-----BEGIN RSA PRIVATE KEY"<>_), do: "***"
+  defp prepare_value("$pbkdf2"<>_), do: "***"
+  defp prepare_value("$argon2"<>_), do: "***"
+  defp prepare_value(binary) when is_binary(binary) do
     with {:ok, ulid} <- Needle.ULID.load(binary) do
       ulid
     else
       _ -> binary
     end
   end
-
-  defp decode_value(%Ecto.Query.Tagged{value: value}), do: decode_value(value)
-
-  defp decode_value(value), do: value
+  defp prepare_value(%Ecto.Query.Tagged{value: value}), do: prepare_value(value)
+  defp prepare_value(value), do: value
 
   defp sql_color("SELECT" <> _), do: :cyan
   defp sql_color("ROLLBACK" <> _), do: :red
