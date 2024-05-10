@@ -3,7 +3,7 @@ defmodule EctoSparkles.Log do
   use Untangle
 
   @moduledoc """
-  Log Ecto queries, and output warnings for n+1 queries
+  Log Ecto queries, and output warnings for slow or possible n+1 queries
 
   To set up, simply add `EctoSparkles.Log.setup(YourApp.Repo)` in your app's main `Application.start/2` module.
   """
@@ -79,8 +79,7 @@ defmodule EctoSparkles.Log do
 
   defp check_if_slow(duration_in_ms, measurements, %{query: query} = metadata)
       when duration_in_ms > 10 do
-    # TODO: get config in more generic way
-    slow_definition_in_ms = Bonfire.Common.Config.get([Bonfire.Common.Repo, :slow_query_ms], 100)
+    slow_definition_in_ms = Application.get_env(:ecto_sparkles, :slow_query_ms, 100) 
 
     {result, _} = metadata.result
 
@@ -110,7 +109,7 @@ defmodule EctoSparkles.Log do
   end
 
   def log_query(result_key, duration_in_ms, measurements, metadata) do
-    level = String.to_atom(System.get_env("DB_QUERIES_LOG_LEVEL", "debug"))
+    level = Application.get_env(:ecto_sparkles, :queries_log_level, :debug)
 
     if level && not String.contains?(metadata.query, @exclude_match) do
       count_n_plus_1 = check_if_n_plus_1(metadata.query)
@@ -169,7 +168,7 @@ defmodule EctoSparkles.Log do
   defp prepare_value("$pbkdf2"<>_), do: "***"
   defp prepare_value("$argon2"<>_), do: "***"
   defp prepare_value(binary) when is_binary(binary) do
-    with {:ok, ulid} <- Needle.ULID.load(binary) do
+    with {:ok, ulid} <- Code.ensure_loaded?(Needle.ULID) and Needle.ULID.load(binary) do
       ulid
     else
       _ -> binary
