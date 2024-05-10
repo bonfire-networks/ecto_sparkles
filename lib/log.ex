@@ -3,7 +3,9 @@ defmodule EctoSparkles.Log do
   use Untangle
 
   @moduledoc """
-  Log slow Ecto queries
+  Log Ecto queries, and output warnings for n+1 queries
+
+  To set up, simply add `EctoSparkles.Log.setup(YourApp.Repo)` in your app's main `Application.start/2` module.
   """
 
   @exclude_sources ["oban_jobs", "oban_peers"]
