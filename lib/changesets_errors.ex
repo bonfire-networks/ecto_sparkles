@@ -8,8 +8,9 @@ defmodule EctoSparkles.Changesets.Errors do
   def changeset_errors_string(changeset, include_schema_tree \\ true)
 
   def changeset_errors_string(%Ecto.Changeset{} = changeset, _) do
-    # IO.inspect(changeset)
-    Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
+    changeset
+    |> IO.inspect(label: "changeset_error")
+    |> Ecto.Changeset.traverse_errors(fn {msg, opts} ->
       Enum.reduce(opts, msg, fn {key, value}, 
       acc ->
         do_to_string(acc) 
