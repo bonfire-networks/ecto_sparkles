@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 defmodule EctoSparkles do
+  @moduledoc "./README.md" |> File.stream!() |> Enum.drop(1) |> Enum.join()
+
   import Ecto, only: [assoc: 2]
   import Untangle
 
