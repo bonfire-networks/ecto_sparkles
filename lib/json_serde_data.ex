@@ -1,8 +1,6 @@
 defmodule EctoSparkles.JSONSerdeData do
   @moduledoc """
-  A custom Ecto type for handling the serialization of arbitrary
-  data types stored as JSON data in the database. Requires the
-  underlying DB field to be :map (eg. JSONB field).
+  A custom Ecto type for handling the serialization of arbitrary data types stored as JSON data in the database. Requires the underlying DB field to be a map / JSONB field.
   """
   use Ecto.Type
   import Untangle
@@ -19,11 +17,13 @@ defmodule EctoSparkles.JSONSerdeData do
   @doc """
   Convert the JSON binary value from the database back to the desired term.
   """
-  # def load(raw_json) when is_binary(raw_json) do
-  #   JsonSerde.deserialize(raw_json)
-  # end
+  def load(raw_json) when is_binary(raw_json) do
+    JsonSerde.deserialize(raw_json)
+    # |> debug("deserialized #{raw_json}")
+  end
   def load(json_data) do
     JsonSerde.Deserializer.deserialize(json_data, json_data)
+    # |> debug("deserialized #{inspect json_data}")
   end
 
   @doc """
