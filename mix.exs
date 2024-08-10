@@ -41,7 +41,7 @@ defmodule EctoSparkles.Project do
       {:ecto_sql, "~> 3.8"},
       {:ecto_dev_logger, "~> 0.9"},
       {:ex_doc, ">= 0.0.0", only: :dev},
-      {:recase, "~> 0.7"},
+      {:recase, "~> 0.8"},
       {:untangle, "~> 0.3"},
       {:html_sanitize_ex, "~> 1.4.2", optional: true}
     ]
