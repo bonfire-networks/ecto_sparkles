@@ -168,8 +168,8 @@ defmodule EctoSparkles.Log do
   defp prepare_value("$pbkdf2"<>_), do: "***"
   defp prepare_value("$argon2"<>_), do: "***"
   defp prepare_value(binary) when is_binary(binary) do
-    with {:ok, ulid} <- Code.ensure_loaded?(Needle.ULID) and Needle.ULID.load(binary) do
-      ulid
+    with {:ok, uid} <- Code.ensure_loaded?(Needle.UID) and Needle.UID.load(binary) do
+      uid
     else
       _ -> binary
     end
