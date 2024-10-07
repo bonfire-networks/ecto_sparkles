@@ -153,7 +153,7 @@ defmodule EctoSparkles.Log do
     source = if metadata.source, do: "source=#{inspect(metadata.source)}"
 
     # \n  params=#{params}
-    "#{result_key} db=#{duration_in_ms}ms #{source}\n  #{inline_params(metadata.query, params, metadata[:repo].__adapter__())} \n#{format_stacktrace_sliced(metadata[:stacktrace])}"
+    "#{result_key} db=#{duration_in_ms}ms #{source} repo=#{metadata.repo}\n  #{inline_params(metadata.query, params, metadata[:repo].__adapter__())} \n#{format_stacktrace_sliced(metadata[:stacktrace])}"
   end
 
   def inline_params(query, params, repo_adapter \\ Ecto.Adapters.SQL) do
