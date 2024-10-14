@@ -33,7 +33,6 @@ defmodule EctoSparkles.ErlangTermBinary do
         # {:ok, Plug.Crypto.non_executable_binary_to_term(raw_binary) |> info()} 
     end
 
-
   @doc """
   Converting the data structure to binary for storage.
   """
