@@ -2,7 +2,6 @@
 defmodule EctoSparkles.Migrator do
   require Logger
 
-  def rollback(repo \\ nil, step \\ 1)
 
   def migrate(repo) do
     Logger.info("Migrate #{inspect(repo)}")
@@ -10,10 +9,14 @@ defmodule EctoSparkles.Migrator do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
   end
 
+  def rollback(repo \\ nil, step \\ 1)
   def rollback(repo, step) when not is_nil(repo) do
     Logger.info("Rollback #{inspect(repo)} by #{inspect(step)} step")
 
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, step: step))
+  end
+  def rollback(nil, step) do
+    for repo <- repos(), do: rollback(repo, step)
   end
 
   def rollback_to(repo, version) do
@@ -30,7 +33,7 @@ defmodule EctoSparkles.Migrator do
 
   def create(repo, attempt \\ 0) do
     try do
-      case repo.__adapter__.storage_up(repo.config) do
+      case repo.__adapter__().storage_up(repo.config) do
         :ok ->
           Logger.info("The database for #{inspect(repo)} has been created")
           :ok
@@ -39,14 +42,14 @@ defmodule EctoSparkles.Migrator do
           :ok
 
         e ->
-          Logger.warn("The database for #{inspect(repo)} could not be created: #{inspect(e)}")
+          Logger.warning("The database for #{inspect(repo)} could not be created: #{inspect(e)}")
 
           if attempt < 10 do
             # wait for Postgres to be up
             Process.sleep(1000)
             create(repo, attempt + 1)
           else
-            Logger.warn("After 10 attempts, the database for #{inspect(repo)} still could not be created: #{inspect(e)}")
+            Logger.warning("After 10 attempts, the database for #{inspect(repo)} still could not be created: #{inspect(e)}")
           end
       end
     rescue
@@ -57,10 +60,6 @@ defmodule EctoSparkles.Migrator do
 
   def migrate do
     for repo <- repos(), do: migrate(repo)
-  end
-
-  def rollback(nil, step) do
-    for repo <- repos(), do: rollback(repo, step)
   end
 
   def rollback_to(version) do

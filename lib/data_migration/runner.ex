@@ -3,7 +3,7 @@ defmodule EctoSparkles.DataMigration.Runner do
   Runs a `DataMigration`
   """
   import Ecto.Query
-  alias EctoSparkles.DataMigration
+  # alias EctoSparkles.DataMigration
 
   @spec run(module()) :: :ok | no_return()
   def run(migration_module) do

@@ -51,7 +51,7 @@ defmodule EctoSparkles.Log do
 
   defp do_handle_event(
          %{query_time: query_time, decode_time: decode_time} = measurements,
-         %{query: query, source: source} = metadata
+         metadata
        ) do
     check_if_slow(
       System.convert_time_unit(query_time, :native, :millisecond) +
@@ -63,7 +63,7 @@ defmodule EctoSparkles.Log do
 
   defp do_handle_event(
          %{query_time: query_time} = measurements,
-         %{query: query, source: source} = metadata
+         metadata
        ) do
     check_if_slow(
       System.convert_time_unit(query_time, :native, :millisecond),
@@ -72,12 +72,12 @@ defmodule EctoSparkles.Log do
     )
   end
 
-  defp do_handle_event(measurements, metadata) do
+  defp do_handle_event(_measurements, metadata) do
     {result, _} = metadata.result
-    log_query(result, nil, measurements, metadata)
+    log_query(result, nil, metadata)
   end
 
-  defp check_if_slow(duration_in_ms, measurements, %{query: query} = metadata)
+  defp check_if_slow(duration_in_ms, _measurements, metadata)
       when duration_in_ms > 10 do
     slow_definition_in_ms = Application.get_env(:ecto_sparkles, :slow_query_ms, 100) 
 
@@ -86,29 +86,29 @@ defmodule EctoSparkles.Log do
     if duration_in_ms > slow_definition_in_ms do
       Logger.warning(
         "Slow database query: " <>
-          format_log(result, duration_in_ms, measurements, metadata)
+          format_log(result, duration_in_ms, metadata)
       )
     else
-      log_query(result, duration_in_ms, measurements, metadata)
+      log_query(result, duration_in_ms, metadata)
     end
   end
 
   defp check_if_slow(duration_in_ms, measurements, metadata) do
     {result_key, _} = metadata.result
-    log_query(result_key, duration_in_ms, measurements, metadata)
+    log_query(result_key, duration_in_ms, metadata)
   end
 
-  def log_query(result_key, duration_in_ms, measurements, metadata)
+  def log_query(result_key, duration_in_ms, metadata)
       when result_key in [:error, "error"] do
     if not String.contains?(metadata.query, @exclude_match),
       do:
         Logger.error(
           "SQL query: " <>
-            format_log(result_key, duration_in_ms, measurements, metadata)
+            format_log(result_key, duration_in_ms, metadata)
         )
   end
 
-  def log_query(result_key, duration_in_ms, measurements, metadata) do
+  def log_query(result_key, duration_in_ms, metadata) do
     level = Application.get_env(:ecto_sparkles, :queries_log_level, :debug)
 
     if level && not String.contains?(metadata.query, @exclude_match) do
@@ -118,17 +118,18 @@ defmodule EctoSparkles.Log do
         is_integer(count_n_plus_1) ->
           Logger.warning(
             "---------> Possible n+1 query detected! Number of occurrences: #{count_n_plus_1} SQL query: " <>
-              format_log(result_key, duration_in_ms, measurements, metadata)
+              format_log(result_key, duration_in_ms, metadata)
           )
 
         not is_nil(level) ->
          Logger.log(
           level,
           "SQL query: " <>
-            format_log(result_key, duration_in_ms, measurements, metadata)
+            format_log(result_key, duration_in_ms, metadata)
           )
 
         true -> # skip
+          nil
       end
     end
   end
@@ -137,12 +138,12 @@ defmodule EctoSparkles.Log do
     case EctoSparkles.NPlus1Detector.check(query) do
       {:match, count} ->
           count
-      _ ->
-        # no match
+      _ -> # no match
+        nil
     end
   end
 
-  def format_log(result_key, duration_in_ms, measurements, metadata) do
+  def format_log(result_key, duration_in_ms, metadata) do
     params = metadata.params 
     |> Enum.map(&prepare_value/1)
     #|> inspect(charlists: false)

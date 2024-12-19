@@ -3,7 +3,7 @@ defmodule EctoSparkles do
   @moduledoc "./README.md" |> File.stream!() |> Enum.drop(1) |> Enum.join()
 
   import Ecto, only: [assoc: 2]
-  import Untangle
+  # import Untangle
 
   @doc """
   `join_preload` is a helper for preloading associations using joins.
@@ -176,7 +176,7 @@ defmodule EctoSparkles do
     end
   end
 
-  defp maybe_rejoin(query, qual, bindings, assoc, rel, alia, caller) do
+  defp maybe_rejoin(query, qual, bindings, assoc, rel, alia, _caller) do
     # debug(query)
     # debug(bindings)
     # debug(assoc)

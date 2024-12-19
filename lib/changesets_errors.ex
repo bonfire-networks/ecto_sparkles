@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 defmodule EctoSparkles.Changesets.Errors do
+  alias Ecto.Changeset 
+  
   def error(changeset, []), do: changeset
 
   def error(changeset, [{k, v} | errors]),

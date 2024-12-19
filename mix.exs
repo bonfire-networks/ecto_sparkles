@@ -43,6 +43,7 @@ defmodule EctoSparkles.Project do
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:recase, "~> 0.8"},
       {:untangle, "~> 0.3"},
+      {:json_serde, "~> 1.1", optional: true},
       {:html_sanitize_ex, "~> 1.4.2", optional: true}
     ]
   end

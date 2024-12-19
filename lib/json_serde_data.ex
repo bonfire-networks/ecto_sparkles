@@ -3,7 +3,7 @@ defmodule EctoSparkles.JSONSerdeData do
   A custom Ecto type for handling the serialization of arbitrary data types stored as JSON data in the database. Requires the underlying DB field to be a map / JSONB field.
   """
   use Ecto.Type
-  import Untangle
+  # import Untangle
 
   def type, do: :map
 
