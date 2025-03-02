@@ -16,6 +16,6 @@
   "mochiweb": {:hex, :mochiweb, "3.2.1", "ff287e1ec653a0828f226cd5a009d52be74537dc3fc274b765525a77ce01f8ec", [:rebar3], [], "hexpm", "975466d335403a78cd58186636b8e960e3c84c4d9c1a85eb7fe53b6a5dd54de7"},
   "nimble_parsec": {:hex, :nimble_parsec, "1.2.0", "b44d75e2a6542dcb6acf5d71c32c74ca88960421b6874777f79153bbbbd7dccc", [:mix], [], "hexpm", "52b2871a7515a5ac49b00f214e4165a40724cf99798d8e4a65e4fd64ebd002c1"},
   "recase": {:hex, :recase, "0.7.0", "3f2f719f0886c7a3b7fe469058ec539cb7bbe0023604ae3bce920e186305e5ae", [:mix], [], "hexpm", "36f5756a9f552f4a94b54a695870e32f4e72d5fad9c25e61bc4a3151c08a4e0c"},
-  "telemetry": {:hex, :telemetry, "1.2.1", "68fdfe8d8f05a8428483a97d7aab2f268aaff24b49e0f599faa091f1d4e7f61c", [:rebar3], [], "hexpm", "dad9ce9d8effc621708f99eac538ef1cbe05d6a874dd741de2e689c47feafed5"},
+
   "untangle": {:hex, :untangle, "0.3.0", "8fb3038ddc96aeec9989aa7b410355297231bd5cee7b718e24aa1efe174fce3a", [:mix], [{:decorator, "~> 1.4", [hex: :decorator, repo: "hexpm", optional: false]}], "hexpm", "9ac26c397155636feaed260b8edcfa01f62af62ab929bad385fbb94beacb5a38"},
 }
