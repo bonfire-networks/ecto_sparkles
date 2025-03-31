@@ -33,7 +33,7 @@ defmodule EctoSparkles.Migrator do
 
   def create(repo, attempt \\ 0) do
     try do
-      case repo.__adapter__().storage_up(repo.config) do
+      case repo.__adapter__().storage_up(repo.config()) do
         :ok ->
           Logger.info("The database for #{inspect(repo)} has been created")
           :ok
