@@ -13,24 +13,28 @@ defmodule EctoSparkles.Log do
   @exclude_match ["oban_jobs", "oban_peers", "oban_insert", "pg_notify", "pg_try_advisory_xact_lock", "schema_migrations"]
 
   def setup(repo_module) do
-    config = repo_module.config()
-    prefix = config[:telemetry_prefix]
-    # <- Telemetry event id for Ecto queries
-    query_event = prefix ++ [:query]
-    # events = [
-    #   query_event,
-    #   prefix ++ [:insert],
-    #   prefix ++ [:update],
-    #   prefix ++ [:delete]
-    # ]
+    if Code.ensure_loaded?(:telemetry) do
+      config = repo_module.config()
+      prefix = config[:telemetry_prefix]
+      # <- Telemetry event id for Ecto queries
+      query_event = prefix ++ [:query]
+      # events = [
+      #   query_event,
+      #   prefix ++ [:insert],
+      #   prefix ++ [:update],
+      #   prefix ++ [:delete]
+      # ]
 
-    # :telemetry.attach_many("ectosparkles-log", events, &EctoSparkles.Log.handle_event/4, [])
-    :telemetry.attach(
-      "ectosparkles-log",
-      query_event,
-      &EctoSparkles.Log.handle_event/4,
-      []
-    )
+      # :telemetry.attach_many("ectosparkles-log", events, &EctoSparkles.Log.handle_event/4, [])
+      :telemetry.attach(
+        "ectosparkles-log",
+        query_event,
+        &EctoSparkles.Log.handle_event/4,
+        []
+      )
+    else
+      Logger.debug "Cannot set up telemetry for EctoSparkles"
+    end
   end
 
   def handle_event(
