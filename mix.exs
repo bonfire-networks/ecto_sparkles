@@ -44,7 +44,7 @@ defmodule EctoSparkles.Project do
       {:recase, "~> 0.8"},
       {:untangle, "~> 0.3"},
       {:json_serde, "~> 1.1", optional: true},
-      {:html_sanitize_ex, "~> 1.4.2", optional: true}
+      {:html_sanitize_ex, "~> 1.4.3", optional: true}
     ]
   end
 end

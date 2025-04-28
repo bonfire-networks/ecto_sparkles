@@ -46,7 +46,7 @@ defmodule EctoSparkles do
         bindings = preload_bindings(associations)
         expr = preload_expr(associations)
 
-        joins(query, associations, [root], :root)
+        rejoins(query, associations, [root], :root)
         |> preload_clause(bindings, expr)
 
       is_atom(associations) ->
@@ -62,14 +62,14 @@ defmodule EctoSparkles do
     end
   end
 
-  defp joins(query, [], _bindings, _assoc), do: query
+  defp rejoins(query, [], _bindings, _assoc), do: query
 
-  defp joins(query, [j | js], bindings, assoc) do
+  defp rejoins(query, [j | js], bindings, assoc) do
     bs = bindings ++ [{j, var(j)}]
     condition = quote do: sparkly in assoc(unquote(var(assoc)), unquote(j))
 
     rejoin(query, bindings, condition, j)
-    |> joins(js, bs, j)
+    |> rejoins(js, bs, j)
   end
 
   # [a: a], [a: a, b: b], [a: a, b: b, c: c] etc.
@@ -246,25 +246,19 @@ defmodule EctoSparkles do
   @doc """
   `reusable_join` is similar to `Ecto.Query.join/{4,5}`, but can be called multiple times with the same alias.
 
-  Note that only the first join operation is performed, the subsequent ones that use the same alias
-  are just ignored. Also note that because of this behaviour, it is mandatory to specify an alias when
-  using this function.
+  Note that only the first join operation is performed, the subsequent ones that use the same alias are just ignored. Also note that because of this behaviour, it is mandatory to specify an alias when using this function.
 
-  This is helpful when you need to perform a join while building queries one filter at a time,
-  because the same filter could be used multiple times or you could have multiple filters that
-  require the same join, which poses a problem with how the `filter/3` callback work, as you
-  need to return a dynamic with the filtering, which means that the join must have an alias,
-  and by default Ecto raises an error when you add multiple joins with the same alias.
+  This is helpful when you need to perform a join while building queries one filter at a time, because the same filter could be used multiple times or you could have multiple filters that require the same join, which poses a problem with how the `filter/3` callback work, as you
+  need to return a dynamic with the filtering, which means that the join must have an alias, and by default Ecto raises an error when you add multiple joins with the same alias.
 
-  To solve this, it is recommended to use this macro instead of the default `Ecto.Query.join/{4,5}`,
-  in which case there will be only one join in the query that can be reused by multiple filters.
+  To solve this, it is recommended to use this macro instead of the default `Ecto.Query.join/{4,5}`, in which case there will be only one join in the query that can be reused by multiple filters.
   """
   defmacro reusable_join(query, qual \\ :left, bindings, expr, opts) do
     as = Keyword.fetch!(opts, :as)
     reusable_join_impl(query, qual, bindings, expr, opts, as)
   end
 
-  # i don't think this needs to be public anymore, but it doesn't hurt
+  # don't think this needs to be public anymore, but it doesn't hurt
   @doc false
   def reusable_join_impl(query, qual \\ :left, bindings, expr, opts, as) do
     args = [qual, bindings, expr, opts]
@@ -335,5 +329,119 @@ defmodule EctoSparkles do
   defp prefix(x, y) when is_binary(x), do: String.to_atom(y <> x)
 
 
+  @doc """
+  Removes joins from an Ecto.Query that aren't referenced in other parts of the query.
+  
+  This function analyzes the query and removes any join whose binding is not used in select, where, order_by, group_by, having, limit, offset, or distinct clauses.
+  
+  ## Parameters
+    - query: An Ecto.Query struct to optimize
+  
+  ## Returns
+    - The optimized Ecto.Query with unused joins removed
+  
+  ## Examples
+  
+      iex> import Ecto.Query
+      iex> query = from u in User, 
+      ...>   join: p in Post, on: p.user_id == u.id,
+      ...>   join: c in Comment, on: c.post_id == p.id, 
+      ...>   where: p.published == true, 
+      ...>   select: u
+      iex> remove_unused_joins(query)
+      #Ecto.Query<from u0 in User, join: p1 in Post, on: p1.user_id == u0.id, where: p1.published == true, select: u0>
+  """
+def remove_unused_joins(%Ecto.Query{} = query) do
+  # Get all referenced indices in query parts
+  referenced = MapSet.new()
+  |> add_indices_from_expr(query.select)
+  |> add_indices_from_expr(query.wheres)
+  |> add_indices_from_expr(query.order_bys)
+  |> add_indices_from_expr(query.group_bys)
+  |> add_indices_from_expr(query.havings)
+  |> add_indices_from_expr(query.distinct)
+  |> add_indices_from_expr(query.limit)
+  |> add_indices_from_expr(query.offset)
+  |> IO.inspect(label: "referenced after pipeline")
 
+  # Find which joins to keep based on references
+  {used_joins, _} =
+    Enum.reduce(Enum.with_index(query.joins, 1), {[], referenced}, fn {join, idx}, {keeps, refs} ->
+      # Check if this join is referenced directly
+      if MapSet.member?(refs, idx) do
+        # Keep this join and continue checking its dependencies
+        {[join | keeps], add_join_dependencies(refs, join)}
+      else
+        # Check if this join is needed for any other referenced join
+        deps_in_refs = join_needed_by_refs?(join, refs, query.joins)
+        if deps_in_refs do
+          {[join | keeps], add_join_dependencies(refs, join)}
+        else
+          {keeps, refs}
+        end
+      end
+    end)
+
+  # Put used joins back in the correct order
+  kept_joins = Enum.reverse(used_joins)
+  %{query | joins: kept_joins}
+end
+
+# Add binding indices from a part of the query
+defp add_indices_from_expr(indices, nil), do: indices
+defp add_indices_from_expr(indices, %{expr: expr}), do: extract_indices(expr, indices)
+defp add_indices_from_expr(indices, exprs) when is_list(exprs) do
+  Enum.reduce(exprs, indices, fn expr, acc -> add_indices_from_expr(acc, expr) end)
+end
+defp add_indices_from_expr(indices, expr) do
+  IO.inspect(expr, label: "Unsupported Expression A")
+  indices
+end
+
+# Extract binding indices from an expression
+defp extract_indices(%{expr: expr}, acc), do: extract_indices(expr, acc)
+defp extract_indices(%Ecto.Query.Tagged{value: value} = expr, acc) do
+  IO.inspect(expr, label: "Tagged Expression")
+  extract_indices(value, acc)
+end
+defp extract_indices(nil, acc), do: acc
+defp extract_indices({:&, _, [idx]}, acc), do: MapSet.put(acc, idx)
+defp extract_indices(tuple, acc) when is_tuple(tuple) do
+  tuple
+  |> Tuple.to_list()
+  |> Enum.reduce(acc, &extract_indices/2)
+end
+defp extract_indices(list, acc) when is_list(list) do
+  Enum.reduce(list, acc, &extract_indices/2)
+end
+defp extract_indices(_, acc), do: acc
+defp extract_indices(expr, acc) do
+  IO.inspect(expr, label: "Unsupported Expression B")
+  acc
+end
+
+# Add dependencies from a join to the referenced indices
+defp add_join_dependencies(refs, %{on: %{expr: expr}}), do: extract_indices(expr, refs)
+defp add_join_dependencies(refs, _), do: refs
+
+
+# Check if a join is needed by any referenced join
+defp join_needed_by_refs?(%{ix: join_ix}, refs, _joins), do: MapSet.member?(refs, join_ix)
+defp join_needed_by_refs?(%{as: join_as}, refs, _joins), do: MapSet.member?(refs, join_as)
+defp join_needed_by_refs?(join, refs, joins) do
+  # Check if this join is referenced in the ON clause of another join that we're keeping
+  Enum.with_index(joins, 1)
+  |> Enum.any?(fn {other_join, other_idx} ->
+    MapSet.member?(refs, other_idx) && join_referenced_in?(join, other_join.on)
+  end)
+end
+
+# Check if a join is referenced in an expression
+defp join_referenced_in?(_, nil), do: false
+defp join_referenced_in?(%{ix: join_ix}, %{expr: {:&, _, [idx]}}), do: join_ix == idx
+defp join_referenced_in?(%{as: join_as}, %{expr: {:&, _, [idx]}}), do: join_as == idx
+defp join_referenced_in?(join, %{expr: {_, _, args}}) when is_list(args) do
+  Enum.any?(args, &join_referenced_in?(join, %{expr: &1}))
+end
+defp join_referenced_in?(_, _), do: false
 end
