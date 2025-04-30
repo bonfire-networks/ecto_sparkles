@@ -264,13 +264,18 @@ defmodule EctoSparkles do
     args = [qual, bindings, expr, opts]
 
     quote do
+      require Untangle
       query = Ecto.Queryable.to_query(unquote(query))
 
-      if Enum.any?(query.joins, &(&1.as == unquote(as))),
-        do: query,
-        else: join(query, unquote_splicing(args))
+      if Enum.any?(query.joins, &(&1.as == unquote(as))) do
+        Untangle.warn(unquote(as), "Already joined on query")
+        query
+      else
+        join(query, unquote_splicing(args))
+      end
     end
   end
+
 
   # slightly more do-what-i-mean interface to reusable_join_impl
   defp rejoin(query, bindings, expr, opts) when is_list(opts),
@@ -362,7 +367,7 @@ def remove_unused_joins(%Ecto.Query{} = query) do
   |> add_indices_from_expr(query.distinct)
   |> add_indices_from_expr(query.limit)
   |> add_indices_from_expr(query.offset)
-  |> IO.inspect(label: "referenced after pipeline")
+  # |> IO.inspect(label: "referenced after pipeline")
 
   # Find which joins to keep based on references
   {used_joins, _} =
@@ -394,14 +399,14 @@ defp add_indices_from_expr(indices, exprs) when is_list(exprs) do
   Enum.reduce(exprs, indices, fn expr, acc -> add_indices_from_expr(acc, expr) end)
 end
 defp add_indices_from_expr(indices, expr) do
-  IO.inspect(expr, label: "Unsupported Expression A")
+  # IO.inspect(expr, label: "Unsupported Expression A")
   indices
 end
 
 # Extract binding indices from an expression
 defp extract_indices(%{expr: expr}, acc), do: extract_indices(expr, acc)
 defp extract_indices(%Ecto.Query.Tagged{value: value} = expr, acc) do
-  IO.inspect(expr, label: "Tagged Expression")
+  # IO.inspect(expr, label: "Tagged Expression")
   extract_indices(value, acc)
 end
 defp extract_indices(nil, acc), do: acc
@@ -416,7 +421,7 @@ defp extract_indices(list, acc) when is_list(list) do
 end
 defp extract_indices(_, acc), do: acc
 defp extract_indices(expr, acc) do
-  IO.inspect(expr, label: "Unsupported Expression B")
+  # IO.inspect(expr, label: "Unsupported Expression B")
   acc
 end
 
@@ -443,5 +448,112 @@ defp join_referenced_in?(%{as: join_as}, %{expr: {:&, _, [idx]}}), do: join_as =
 defp join_referenced_in?(join, %{expr: {_, _, args}}) when is_list(args) do
   Enum.any?(args, &join_referenced_in?(join, %{expr: &1}))
 end
-defp join_referenced_in?(_, _), do: false
+defp join_referenced_in?(_, _), do: false  
+
+@doc """
+  `join_override` is similar to `Ecto.Query.join/{4,5}`, but can be called multiple times with the same alias.
+
+  Unlike `reusable_join`, which skips subsequent joins with the same alias, `join_override` will replace any existing join with the same alias with the new one.
+
+  This is useful when you need to join the same table multiple times with different conditions, while avoiding the "alias already exists" error from Ecto.
+
+  Note that because of this behaviour, it is mandatory to specify an alias when using this function.
+
+  Warning: this macro is a work-in-progress, and while the test suite passes it doesn't seem to produce valid queries, resulting in errors like `(Postgrex.Error) ERROR 42P01 (undefined_table) missing FROM-clause entry for table "sb8"` when executed.
+  """
+  defmacro join_override(query, qual \\ :left, bindings, expr, opts) do
+    as = Keyword.fetch!(opts, :as)
+    join_override_impl(query, qual, bindings, expr, opts, as)
+  end
+
+  # Implementation of join_override that replaces existing joins with the same alias
+  @doc false
+  def join_override_impl(query, qual \\ :left, bindings, expr, opts, as) do
+    args = [qual, bindings, expr, opts]
+
+    quote do
+      as = unquote(as)
+      query = Ecto.Queryable.to_query(unquote(query))
+      
+      # Check if the join exists before trying to replace it
+      case Enum.find_index(query.joins, &(&1.as == as)) do
+        nil ->
+          # If no join with this alias exists, just add a new one
+          join(query, unquote_splicing(args))
+        
+        join_list_idx ->
+          # If join exists with this alias, we need to update it in place to maintain indices
+          existing_join = Enum.at(query.joins, join_list_idx)
+          
+          # Store the original binding index from the aliases map
+          # This is crucial for maintaining references to this binding throughout the query
+          original_binding_idx = Map.get(query.aliases, as)
+          
+          # First, remove the alias from the aliases map
+          # This is critical to allow the new join with the same alias
+          query_without_alias = %{query | aliases: Map.delete(query.aliases, as)}
+          
+          # Then add the new join
+          new_query = join(query_without_alias, unquote_splicing(args))
+          
+          # Find the new join (it will be the last one)
+          new_join = List.last(new_query.joins)
+          
+          # Modify the new join to preserve the original ix value
+          modified_join = %{new_join | ix: existing_join.ix}
+          
+          # Remove both the new temporary join and the old join with our alias
+          filtered_joins = Enum.reject(new_query.joins, fn join -> 
+            join == new_join || (join.as == as && join != new_join)
+          end)
+          
+          # Add our modified join at the same position as the original
+          updated_joins = List.insert_at(filtered_joins, join_list_idx, modified_join)
+          
+          # Restore the original binding index in the aliases map
+          updated_aliases = Map.put(new_query.aliases, as, original_binding_idx)
+          
+          # Return query with updated joins and aliases
+          %{new_query | joins: updated_joins, aliases: updated_aliases}
+      end
+    end
+  end
+  
+  @doc """
+    Removes a specific named join from an Ecto query.
+    
+    ## Parameters
+    
+    - `query`: The Ecto query to modify
+    - `binding_name`: The named binding (atom) used in the join's `:as` option
+    
+    ## Examples
+    
+        query = from p in Post, 
+                  join: c in assoc(p, :comments), as: :comments,
+                  join: u in assoc(p, :user), as: :user
+                  
+        # Remove the comments join
+        drop_join(query, :comments)
+        
+    ## Warning
+    
+    As noted in the Ecto documentation, if a join is removed and its bindings were referenced elsewhere in the query (in where clauses, select statements, etc.), the bindings won't be removed, leading to a query that won't compile. Make sure to only remove join bindings that aren't used elsewhere.
+    """
+  def drop_join(%Ecto.Query{joins: joins, aliases: aliases} = query, binding_name) when is_atom(binding_name) do
+      # Filter out the join with the specified named binding
+      filtered_joins = Enum.reject(joins, fn join ->
+        case join do
+          %{as: ^binding_name} -> true
+          _ -> false
+        end
+      end)
+      
+      # Also remove the binding from the aliases map
+      filtered_aliases = Map.delete(aliases, binding_name)
+      
+      # Return query with updated joins and aliases
+      %{query | joins: filtered_joins, aliases: filtered_aliases}
+  end
+  
 end
