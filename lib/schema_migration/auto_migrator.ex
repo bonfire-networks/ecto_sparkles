@@ -19,8 +19,8 @@ defmodule EctoSparkles.AutoMigrator do
 
   def startup_migrations() do
       try do
-        EctoSparkles.Migrator.status()
         EctoSparkles.Migrator.create()
+        EctoSparkles.Migrator.status()
         EctoSparkles.Migrator.migrate()
         EctoSparkles.Migrator.status()
       rescue
