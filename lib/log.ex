@@ -106,7 +106,7 @@ defmodule EctoSparkles.Log do
       when result_key in [:error, "error"] do
     if not String.contains?(metadata.query, @exclude_match),
       do:
-        Logger.error(
+        Untangle.log_or_flood(:error,
           "SQL query: " <>
             format_log(result_key, duration_in_ms, metadata)
         )
@@ -120,13 +120,13 @@ defmodule EctoSparkles.Log do
 
       cond do
         is_integer(count_n_plus_1) ->
-          Logger.warning(
+          Untangle.log_or_flood(:warning,
             "---------> Possible n+1 query detected! Number of occurrences: #{count_n_plus_1} SQL query: " <>
               format_log(result_key, duration_in_ms, metadata)
           )
 
         not is_nil(level) ->
-         Logger.log(
+         Untangle.log_or_flood(
           level,
           "SQL query: " <>
             format_log(result_key, duration_in_ms, metadata)
