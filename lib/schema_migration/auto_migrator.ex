@@ -21,7 +21,7 @@ defmodule EctoSparkles.AutoMigrator do
       try do
         EctoSparkles.Migrator.create()
         EctoSparkles.Migrator.status()
-        EctoSparkles.Migrator.migrate()
+        EctoSparkles.Migrator.migrate(continue_on_error: true)
         EctoSparkles.Migrator.status()
       rescue
         e ->

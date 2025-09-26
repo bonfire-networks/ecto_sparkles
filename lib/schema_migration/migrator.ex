@@ -2,11 +2,110 @@
 defmodule EctoSparkles.Migrator do
   require Logger
 
+  @doc """
+  Run all migrations for configured repos.
 
-  def migrate(repo) do
+  Options:
+    - `continue_on_error: true` - run migrations one by one, logging errors but continuing if one fails.
+  """
+  def migrate(opts \\ []) do
+    for repo <- repos(), do: migrate_repo(repo, opts)
+  end
+
+  @doc """
+  Run all migrations for the given repo.
+
+  Options: see `migrate/1`
+  """
+  def migrate_repo(repo, opts \\ []) do
     Logger.info("Migrate #{inspect(repo)}")
 
-    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+    if Keyword.get(opts, :continue_on_error, false) do
+      run_migrations_one_by_one(repo)
+    else
+      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+    end
+  end
+
+  defp run_migrations_one_by_one(repo) do
+    paths = repo_migrations_path(repo)
+    {:ok, migrations, _} =
+      Ecto.Migrator.with_repo(repo, &Ecto.Migrator.migrations(&1, paths), mode: :temporary)
+
+    pending =
+      Enum.map(migrations, fn
+        {status, version, desc, module} -> {status, version, desc, module}
+        {status, version, desc} -> {status, version, desc, nil}
+      end)
+      |> Enum.filter(fn {status, _version, _desc, _module} -> status == :down end)
+      |> Enum.map(fn {_status, version, desc, module} -> {version, desc, module} end)
+
+    Enum.map(pending, fn {version, desc, module} ->
+      Logger.info("Running migration #{version} (#{desc}) for #{inspect(repo)}")
+      try do
+        mod =
+          case module do
+            nil ->
+              case migration_module_from_file_or_loaded(paths, version, desc) do
+                {:ok, mod} -> mod
+                {:error, reason} ->
+                  Logger.warn("Skipping migration #{version} (#{desc}): #{reason}")
+                  throw({:skip, version, desc, reason})
+              end
+            mod -> mod
+          end
+
+        case Ecto.Migrator.up(repo, version, mod, []) do
+          :ok ->
+            {:ok, version, desc}
+          :already_up ->
+            Logger.warn("Migration #{version} (#{desc}) was already up for #{inspect(repo)}")
+            {:ok, version, desc}
+          other ->
+            Logger.error("Migration #{version} (#{desc}) unexpected result: #{inspect(other)} for #{inspect(repo)}")
+            {:error, version, desc, other}
+        end
+      catch
+        {:skip, version, desc, reason} ->
+          {:skipped, version, desc, reason}
+      rescue
+        e ->
+          Logger.error("Migration #{version} (#{desc}) failed for #{inspect(repo)}: #{Exception.message(e)}")
+          {:error, version, desc, e}
+      end
+    end)
+  end
+
+  defp migration_module_from_file_or_loaded(paths, version, desc) do
+    # Try to find a loaded module matching the migration version and description
+    mod_name =
+      desc
+      |> String.replace(~r/[^a-zA-Z0-9]/, "_")
+      |> Macro.camelize()
+
+    candidates =
+      for app <- :code.all_loaded() |> Enum.map(fn {m, _} -> m end),
+          mod_str = Atom.to_string(app),
+          String.contains?(mod_str, Integer.to_string(version)),
+          String.contains?(mod_str, mod_name),
+          do: app
+
+    case candidates do
+      [mod | _] -> {:ok, mod}
+      [] ->
+        # fallback: load module from migration file
+        path =
+          List.wrap(paths)
+          |> Enum.flat_map(&Path.wildcard(Path.join(&1, "migrations/#{version}_*.exs")))
+          |> List.first()
+
+        if path do
+          [{mod, _}] = Code.load_file(path)
+          {:ok, mod}
+        else
+          {:error, "Could not find a loaded module for version #{version} or a migration file in #{inspect paths}"}
+        end
+    end
   end
 
   def rollback(repo \\ nil, step \\ 1)
@@ -56,10 +155,6 @@ defmodule EctoSparkles.Migrator do
       e ->
         Logger.error("The database for #{inspect(repo)} failed to be created: #{inspect(e)}")
     end
-  end
-
-  def migrate do
-    for repo <- repos(), do: migrate(repo)
   end
 
   def rollback_to(version) do
