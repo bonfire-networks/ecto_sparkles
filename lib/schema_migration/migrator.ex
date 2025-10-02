@@ -169,7 +169,7 @@ defmodule EctoSparkles.Migrator do
     for repo <- repos(), do: create(repo)
   end
 
-  defp repos do
+  def repos do
     app = Application.fetch_env!(:ecto_sparkles, :otp_app)
     Application.load(app)
     Application.fetch_env!(app, :ecto_repos)
@@ -179,10 +179,10 @@ defmodule EctoSparkles.Migrator do
   Print the migration status for configured Repos' migrations.
   """
   def status do
-    for repo <- repos(), do: print_migrations_for(repo)
+    for repo <- repos(), do: status(repo)
   end
 
-  defp print_migrations_for(repo) do
+  def status(repo) do
     paths =
       repo_migrations_path(repo)
       |> IO.inspect(label: "Migration path")

@@ -18,16 +18,20 @@ defmodule EctoSparkles.AutoMigrator do
   end
 
   def startup_migrations() do
+    for repo <- EctoSparkles.Migrator.repos() do
       try do
-        EctoSparkles.Migrator.create()
-        EctoSparkles.Migrator.status()
-        EctoSparkles.Migrator.migrate(continue_on_error: true)
-        EctoSparkles.Migrator.status()
+        Logger.info("Attempting to run migrations on startup for #{inspect(repo)}")
+        EctoSparkles.Migrator.create(repo)
+        EctoSparkles.Migrator.status(repo)
+        EctoSparkles.Migrator.migrate_repo(repo, continue_on_error: true)
+        EctoSparkles.Migrator.status(repo)
+        Logger.info("Done running migrations on startup for #{inspect(repo)}")
       rescue
         e ->
-          Logger.error("Error when running migrations on startup: #{inspect(e)}")
+          Logger.error("Error when running migrations on startup for #{inspect(repo)}: #{inspect(e)}")
 
           :ok
       end
+    end
   end
 end
