@@ -49,7 +49,7 @@ defmodule EctoSparkles.Migrator do
               case migration_module_from_file_or_loaded(paths, version, desc) do
                 {:ok, mod} -> mod
                 {:error, reason} ->
-                  Logger.warn("Skipping migration #{version} (#{desc}): #{reason}")
+                  IO.warn("Skipping migration #{version} (#{desc}): #{reason}")
                   throw({:skip, version, desc, reason})
               end
             mod -> mod
@@ -59,10 +59,10 @@ defmodule EctoSparkles.Migrator do
           :ok ->
             {:ok, version, desc}
           :already_up ->
-            Logger.warn("Migration #{version} (#{desc}) was already up for #{inspect(repo)}")
+            Logger.info("Migration #{version} (#{desc}) was already up for #{inspect(repo)}")
             {:ok, version, desc}
           other ->
-            Logger.error("Migration #{version} (#{desc}) unexpected result: #{inspect(other)} for #{inspect(repo)}")
+            IO.warn("Migration #{version} (#{desc}) for #{inspect(repo)} returned unexpected result: #{inspect(other)}")
             {:error, version, desc, other}
         end
       catch
@@ -70,7 +70,7 @@ defmodule EctoSparkles.Migrator do
           {:skipped, version, desc, reason}
       rescue
         e ->
-          Logger.error("Migration #{version} (#{desc}) failed for #{inspect(repo)}: #{Exception.message(e)}")
+          IO.warn("Migration #{version} (#{desc}) failed for #{inspect(repo)}: #{Exception.message(e)}")
           {:error, version, desc, e}
       end
     end)
