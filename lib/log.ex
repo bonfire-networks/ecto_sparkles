@@ -10,7 +10,7 @@ defmodule EctoSparkles.Log do
 
   @exclude_sources ["oban_jobs", "oban_peers"]
   @exclude_queries ["commit", "begin"]
-  @exclude_match ["oban_jobs", "oban_peers", "oban_insert", "pg_notify", "pg_try_advisory_xact_lock", "schema_migrations"]
+  @exclude_match ["oban_jobs", "oban_peers", "oban_insert", "pg_notify", "pg_try_advisory_xact_lock", "schema_migrations", "pg_try_advisory_lock"]
 
   def setup(repo_module) do
     if Code.ensure_loaded?(:telemetry) do
@@ -120,9 +120,8 @@ defmodule EctoSparkles.Log do
 
       cond do
         is_integer(count_n_plus_1) ->
-          Untangle.log_or_flood(:warning,
-            "---------> Possible n+1 query detected! Number of occurrences: #{count_n_plus_1} SQL query: " <>
-              format_log(result_key, duration_in_ms, metadata)
+          Untangle.warner(format_log(result_key, duration_in_ms, metadata), 
+            "---------> Possible n+1 query detected! Number of occurrences: #{count_n_plus_1} SQL query"
           )
 
         not is_nil(level) ->
