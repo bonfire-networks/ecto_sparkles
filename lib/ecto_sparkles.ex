@@ -112,6 +112,17 @@ defmodule EctoSparkles do
     )
   end
 
+  defmacro projoin(query, qual \\ :left, associations),
+    do: projoin_impl(query, qual, associations, __CALLER__)
+
+  defp projoin_impl(query, qual, associations, caller) do
+    # we want to expand metadata references
+    associations = List.wrap(expand(associations, caller))
+    # iterate over the form, generating nested join clauses
+    proload_join(query, qual, associations, [var(:root)], :root, "", caller)
+  end
+
+
   # this recurses through the forms generating a join clause at each
   # step, which it pipes the query form through returning a new query form.
   defp proload_join(
