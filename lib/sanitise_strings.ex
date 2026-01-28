@@ -52,27 +52,37 @@ defmodule EctoSparkles.SanitiseStrings do
   def sanitise_strings(%Ecto.Changeset{} = changeset, opts \\ []) do
     blacklisted_fields = Keyword.get(opts, :except, [])
     scrubber = Keyword.get(opts, :scrubber, &HtmlSanitizeEx.strip_tags/1)
+    decode_entities = Keyword.get(opts, :decode_entities, false)
 
     sanitized_changes =
       Enum.into(changeset.changes, %{}, fn change ->
-        scrub_change(change, blacklisted_fields, changeset.types, scrubber)
+        scrub_change(change, blacklisted_fields, changeset.types, scrubber, decode_entities)
       end)
 
     %{changeset | changes: sanitized_changes}
   end
 
-  defp scrub_change({field, value}, blacklisted_fields, types, scrubber)
+  defp scrub_change({field, value}, blacklisted_fields, types, scrubber, decode_entities)
        when is_binary(value) do
     if field in blacklisted_fields do
       {field, value}
     else
       if Map.get(types, field) == :string do
-        {field, scrubber.(value)}
+        scrubbed = scrubber.(value)
+
+        final_value =
+          if decode_entities do
+            HtmlEntities.decode(scrubbed)
+          else
+            scrubbed
+          end
+
+        {field, final_value}
       else
         {field, value}
       end
     end
   end
 
-  defp scrub_change(change, _, _, _), do: change
+  defp scrub_change(change, _, _, _, _), do: change
 end
