@@ -21,6 +21,7 @@ defmodule EctoSparkles.DataMigration do
         where: is_nil(u.onboarding_step),
         select: %{id: u.id}
       )
+      # NOTE: result should contain an :id key for the migration runner to track progress
     end
 
     @impl DataMigration
