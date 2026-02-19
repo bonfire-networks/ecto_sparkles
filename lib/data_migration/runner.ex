@@ -8,8 +8,9 @@ defmodule EctoSparkles.DataMigration.Runner do
   @spec run(module()) :: :ok | no_return()
   def run(migration_module) do
     config = migration_module.config()
+    config = %{config | repo: migration_repo(config.repo)}
 
-    if config.async do 
+    if config.async do
       Task.start(fn ->
         throttle_change_in_batches(migration_module, config, config.first_id)
       end)
@@ -18,6 +19,20 @@ defmodule EctoSparkles.DataMigration.Runner do
 
     else
         throttle_change_in_batches(migration_module, config, config.first_id)
+    end
+  end
+
+  # Use the repo from Ecto's migration runner when available (so data migrations
+  # run against the correct repo, e.g. TestInstanceRepo), falling back to config.
+  defp migration_repo(fallback_repo) do
+    case Process.get(:ecto_migration) do
+      %{runner: _} -> 
+        repo = Ecto.Migration.Runner.repo()
+        IO.puts("DataMigration: Using repo from Ecto.Migration.Runner: #{inspect(repo)}")
+        repo
+      _ -> 
+        IO.puts("Warning: DataMigration is running outside of Ecto's migration runner; using repo from Ecto config. This may not be the correct repo in some contexts, e.g. when running tests with multiple repos.")
+        fallback_repo
     end
   end
 

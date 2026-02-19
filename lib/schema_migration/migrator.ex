@@ -29,51 +29,58 @@ defmodule EctoSparkles.Migrator do
 
   defp run_migrations_one_by_one(repo) do
     paths = repo_migrations_path(repo)
-    {:ok, migrations, _} =
-      Ecto.Migrator.with_repo(repo, &Ecto.Migrator.migrations(&1, paths), mode: :temporary)
 
-    pending =
-      Enum.map(migrations, fn
-        {status, version, desc, module} -> {status, version, desc, module}
-        {status, version, desc} -> {status, version, desc, nil}
-      end)
-      |> Enum.filter(fn {status, _version, _desc, _module} -> status == :down end)
-      |> Enum.map(fn {_status, version, desc, module} -> {version, desc, module} end)
+    # Use a single with_repo call to keep the repo running for the entire
+    # migration process (including data migrations that query the repo).
+    {:ok, results, _} =
+      Ecto.Migrator.with_repo(repo, fn repo ->
+        migrations = Ecto.Migrator.migrations(repo, paths)
 
-    Enum.map(pending, fn {version, desc, module} ->
-      Logger.info("Running migration #{version} (#{desc}) for #{inspect(repo)}")
-      try do
-        mod =
-          case module do
-            nil ->
-              case migration_module_from_file_or_loaded(paths, version, desc) do
-                {:ok, mod} -> mod
-                {:error, reason} ->
-                  IO.warn("Skipping migration #{version} (#{desc}): #{reason}")
-                  throw({:skip, version, desc, reason})
+        pending =
+          Enum.map(migrations, fn
+            {status, version, desc, module} -> {status, version, desc, module}
+            {status, version, desc} -> {status, version, desc, nil}
+          end)
+          |> Enum.filter(fn {status, _version, _desc, _module} -> status == :down end)
+          |> Enum.map(fn {_status, version, desc, module} -> {version, desc, module} end)
+
+        Enum.map(pending, fn {version, desc, module} ->
+          Logger.info("Running migration #{version} (#{desc}) for #{inspect(repo)}")
+          try do
+            mod =
+              case module do
+                nil ->
+                  case migration_module_from_file_or_loaded(paths, version, desc) do
+                    {:ok, mod} -> mod
+                    {:error, reason} ->
+                      IO.warn("Skipping migration #{version} (#{desc}): #{reason}")
+                      throw({:skip, version, desc, reason})
+                  end
+                mod -> mod
               end
-            mod -> mod
-          end
 
-        case Ecto.Migrator.up(repo, version, mod, []) do
-          :ok ->
-            {:ok, version, desc}
-          :already_up ->
-            Logger.info("Migration #{version} (#{desc}) was already up for #{inspect(repo)}")
-            {:ok, version, desc}
-          other ->
-            IO.warn("Migration #{version} (#{desc}) for #{inspect(repo)} returned unexpected result: #{inspect(other)}")
-            {:error, version, desc, other}
-        end
-      catch
-        {:skip, version, desc, reason} ->
-          {:skipped, version, desc, reason}
-      rescue
-        e ->
-          IO.warn("Migration #{version} (#{desc}) failed for #{inspect(repo)}: #{Exception.message(e)}")
-          {:error, version, desc, e}
-      end
-    end)
+            case Ecto.Migrator.up(repo, version, mod, []) do
+              :ok ->
+                {:ok, version, desc}
+              :already_up ->
+                Logger.info("Migration #{version} (#{desc}) was already up for #{inspect(repo)}")
+                {:ok, version, desc}
+              other ->
+                IO.warn("Migration #{version} (#{desc}) for #{inspect(repo)} returned unexpected result: #{inspect(other)}")
+                {:error, version, desc, other}
+            end
+          catch
+            {:skip, version, desc, reason} ->
+              {:skipped, version, desc, reason}
+          rescue
+            e ->
+              IO.warn("Migration #{version} (#{desc}) failed for #{inspect(repo)}: #{Exception.message(e)}")
+              {:error, version, desc, e}
+          end
+        end)
+      end, mode: :temporary)
+
+    results
   end
 
   defp migration_module_from_file_or_loaded(paths, version, desc) do
@@ -172,7 +179,9 @@ defmodule EctoSparkles.Migrator do
   def repos do
     app = Application.fetch_env!(:ecto_sparkles, :otp_app)
     Application.load(app)
-    Application.fetch_env!(app, :ecto_repos)
+    repos = Application.fetch_env!(app, :ecto_repos)
+    Logger.info("Repos for app #{inspect(app)}: #{inspect(repos)}")
+    repos
   end
 
   @doc """
