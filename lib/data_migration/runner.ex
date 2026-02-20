@@ -25,7 +25,7 @@ defmodule EctoSparkles.DataMigration.Runner do
   # Use the repo from Ecto's migration runner when available (so data migrations
   # run against the correct repo, e.g. TestInstanceRepo), falling back to config.
   defp migration_repo(fallback_repo) do
-    case Process.get(:ecto_migration) do
+    case ProcessTree.get(:ecto_migration) do
       %{runner: _} -> 
         repo = Ecto.Migration.Runner.repo()
         IO.puts("DataMigration: Using repo from Ecto.Migration.Runner: #{inspect(repo)}")

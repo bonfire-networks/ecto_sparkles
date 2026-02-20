@@ -13,7 +13,7 @@ defmodule EctoSparkles.NPlus1Detector do
   end
 
   defp get(query) do
-    Process.get("one_plus_n_detector: #{query}")
+    ProcessTree.get("one_plus_n_detector: #{query}")
   end
 
   defp put(query, counter) do
