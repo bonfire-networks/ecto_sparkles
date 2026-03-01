@@ -45,7 +45,7 @@ defmodule EctoSparkles.Project do
       {:untangle, "~> 0.3"},
       {:process_tree, "~> 0.2.1"},
       {:json_serde, "~> 1.1", optional: true},
-      {:html_sanitize_ex, "~> 1.4.3", optional: true}
+      {:html_sanitize_ex, "~> 1.4.3 or ~> 1.5.0-rc", optional: true}
     ]
   end
 end
