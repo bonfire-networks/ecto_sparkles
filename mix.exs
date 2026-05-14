@@ -44,6 +44,7 @@ defmodule EctoSparkles.Project do
       {:recase, "~> 0.8"},
       {:untangle, "~> 0.3"},
       {:process_tree, "~> 0.3.0"},
+      {:plug_crypto, "~> 2.0", optional: true},
       {:json_serde, "~> 1.1", optional: true},
       {:html_sanitize_ex, "~> 1.4.3 or ~> 1.5.0-rc", optional: true}
     ]
