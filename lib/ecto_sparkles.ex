@@ -279,7 +279,7 @@ defmodule EctoSparkles do
       query = Ecto.Queryable.to_query(unquote(query))
 
       if Enum.any?(query.joins, &(&1.as == unquote(as))) do
-        Untangle.warn(unquote(as), "Already joined on query")
+        Untangle.debug(unquote(as), "Already joined on query")
         query
       else
         join(query, unquote_splicing(args))
