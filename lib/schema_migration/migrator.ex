@@ -125,16 +125,32 @@ defmodule EctoSparkles.Migrator do
     for repo <- repos(), do: rollback(repo, step)
   end
 
+  def rollback_to(repo \\ nil, version) 
+  def rollback_to(nil, version) do
+    for repo <- repos(), do: rollback_to(repo, version)
+  end
   def rollback_to(repo, version) do
     Logger.info("Rollback #{inspect(repo)} to version #{inspect(version)}")
 
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
   end
 
+  def rollback_all(repo \\ nil) 
+  def rollback_all(nil) do
+    for repo <- repos(), do: rollback_all(repo)
+  end
   def rollback_all(repo) do
     Logger.info("Rollback #{inspect(repo)}")
 
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, all: true))
+  end
+
+  def migrated_versions(repo \\ nil)
+  def migrated_versions(nil) do
+    for repo <- repos(), do: migrated_versions(repo)
+  end
+  def migrated_versions(repo) do
+    Ecto.Migrator.with_repo(repo, &Ecto.Migrator.migrated_versions/1)
   end
 
   def create(repo, attempt \\ 0) do
@@ -162,14 +178,6 @@ defmodule EctoSparkles.Migrator do
       e ->
         Logger.error("The database for #{inspect(repo)} failed to be created: #{inspect(e)}")
     end
-  end
-
-  def rollback_to(version) do
-    for repo <- repos(), do: rollback_to(repo, version)
-  end
-
-  def rollback_all() do
-    for repo <- repos(), do: rollback_all(repo)
   end
 
   def create() do
