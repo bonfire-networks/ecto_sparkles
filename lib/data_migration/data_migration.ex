@@ -44,6 +44,9 @@ defmodule EctoSparkles.DataMigration do
 
   @callback config() :: DataMigration.Config.t()
 
+  @doc "Like `config/0`, but receives the `opts` passed to `DataMigration.Runner.run/2`."
+  @callback config(opts :: keyword()) :: DataMigration.Config.t()
+
   @doc """
   The core of the query you want to use to SELECT a map of your data.
   The `DataMigration.Runner` will take care of limiting this to a batch size, ordering
@@ -54,10 +57,22 @@ defmodule EctoSparkles.DataMigration do
   @callback base_query() :: Ecto.Query.t()
 
   @doc """
+  Like `base_query/0`, but receives the `opts` passed to `DataMigration.Runner.run/2` — implement this
+  (instead of `base_query/0`) when the query should be parameterised (e.g. scoping which rows to process).
+  """
+  @callback base_query(opts :: keyword()) :: Ecto.Query.t()
+
+  @doc """
   The callback to operate on a result set from your query.
   Implementers should `raise` an error if you're unable to process the batch.
   """
   @callback migrate([map]) :: :ok | no_return()
+
+  @doc "Like `migrate/1`, but also receives the `opts` passed to `DataMigration.Runner.run/2`."
+  @callback migrate([map], opts :: keyword()) :: :ok | no_return()
+
+  # a migration implements config/0 OR config/1, base_query/0 OR base_query/1, migrate/1 OR migrate/2
+  @optional_callbacks config: 0, config: 1, base_query: 0, base_query: 1, migrate: 1, migrate: 2
 
   defmacro __using__(_) do
     quote do
