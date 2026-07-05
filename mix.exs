@@ -4,7 +4,7 @@ defmodule EctoSparkles.Project do
   def project do
     [
       app: :ecto_sparkles,
-      version: "0.3.0",
+      version: "0.4.0",
       description: "Helper library to better join + preload Ecto associations, and other goodies",
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
@@ -42,7 +42,7 @@ defmodule EctoSparkles.Project do
       {:ecto_dev_logger, "~> 0.9"},
       {:ex_doc, ">= 0.0.0", only: :dev},
       {:recase, "~> 0.8"},
-      {:untangle, "~> 0.3"},
+      {:untangle, "~> 0.5"},
       {:process_tree, "~> 0.3.0"},
       {:plug_crypto, "~> 2.0", optional: true},
       {:json_serde, "~> 1.1", optional: true},

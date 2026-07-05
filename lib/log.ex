@@ -12,30 +12,45 @@ defmodule EctoSparkles.Log do
   @exclude_queries ["commit", "begin"]
   @exclude_match ["oban_jobs", "oban_peers", "oban_insert", "pg_notify", "pg_try_advisory_xact_lock", "schema_migrations", "pg_try_advisory_lock"]
 
-  def setup(repo_module) do
+  def setup(repo_module, opts \\ []) do
     if Code.ensure_loaded?(:telemetry) do
-      config = repo_module.config()
-      prefix = config[:telemetry_prefix]
-      # <- Telemetry event id for Ecto queries
-      query_event = prefix ++ [:query]
-      # events = [
-      #   query_event,
-      #   prefix ++ [:insert],
-      #   prefix ++ [:update],
-      #   prefix ++ [:delete]
-      # ]
-
-      # :telemetry.attach_many("ectosparkles-log", events, &EctoSparkles.Log.handle_event/4, [])
       :telemetry.attach(
         "ectosparkles-log",
-        query_event,
+        query_event(repo_module),
         &EctoSparkles.Log.handle_event/4,
         []
       )
+
+      # no-op unless :n_plus_1_detect is enabled (see NPlus1Reporter.setup/1)
+      EctoSparkles.NPlus1Reporter.setup(opts)
     else
       Logger.debug "Cannot set up telemetry for EctoSparkles"
     end
   end
+
+  @doc """
+  The telemetry event id for the repo's queries (e.g. `[:bonfire, :common, :repo, :query]`),
+  derived from the repo's `:telemetry_prefix` config (falling back to Ecto's module-name default).
+  The canonical helper for every consumer of the repo query event.
+  """
+  def query_event(repo_module), do: telemetry_prefix(repo_module) ++ [:query]
+
+  def telemetry_prefix(repo_module) do
+    repo_module.config()[:telemetry_prefix] || default_telemetry_prefix(repo_module)
+  rescue
+    _ -> default_telemetry_prefix(repo_module)
+  end
+
+  # Ecto's own default when no :telemetry_prefix is configured
+  defp default_telemetry_prefix(repo_module) do
+    repo_module
+    |> Module.split()
+    |> Enum.map(&(&1 |> Macro.underscore() |> String.to_atom()))
+  end
+
+  @doc "Converts a telemetry `:native` time to microseconds (nil/garbage-safe: returns 0)."
+  def native_us(t) when is_integer(t), do: System.convert_time_unit(t, :native, :microsecond)
+  def native_us(_), do: 0
 
   def handle_event(
         _,
@@ -45,6 +60,10 @@ defmodule EctoSparkles.Log do
       )
       when (is_nil(source) or source not in @exclude_sources) and
              query not in @exclude_queries do
+    # N+1 accumulation is independent of query LOGGING: counts flush + report once per unit of
+    # work via the host app's span-stop telemetry handlers (no-op unless :n_plus_1_detect is on)
+    EctoSparkles.NPlus1Detector.check(query)
+
     do_handle_event(measurements, metadata)
   end
 
@@ -115,34 +134,14 @@ defmodule EctoSparkles.Log do
   def log_query(result_key, duration_in_ms, metadata) do
     level = Application.get_env(:ecto_sparkles, :queries_log_level, :debug)
 
-    if level && not String.contains?(metadata.query, @exclude_match) do
-      count_n_plus_1 = check_if_n_plus_1(metadata.query)
-
-      cond do
-        is_integer(count_n_plus_1) ->
-          Untangle.warner(format_log(result_key, duration_in_ms, metadata), 
-            "---------> Possible n+1 query detected! Number of occurrences: #{count_n_plus_1} SQL query"
-          )
-
-        not is_nil(level) ->
-         Untangle.log_or_flood(
-          level,
-          "SQL query: " <>
-            format_log(result_key, duration_in_ms, metadata)
-          )
-
-        true -> # skip
-          nil
-      end
-    end
-  end
-
-  def check_if_n_plus_1(query) do
-    case EctoSparkles.NPlus1Detector.check(query) do
-      {:match, count} ->
-          count
-      _ -> # no match
-        nil
+    # when the current Logger level would discard the line anyway (e.g. prod at :warning with this at :debug), skip ALL the work message formatting and param inlining. This runs on every query. (N+1 detection is separate: see `NPlus1Detector.check/1` in `handle_event`,
+    # reported once per unit of work by the host app's span-stop handlers.)
+    if level && Untangle.log_enabled?(level) &&
+         not String.contains?(metadata.query, @exclude_match) do
+      Untangle.log_or_flood(
+        level,
+        "SQL query: " <> format_log(result_key, duration_in_ms, metadata)
+      )
     end
   end
 
