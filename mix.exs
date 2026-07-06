@@ -17,7 +17,7 @@ defmodule EctoSparkles.Project do
   defp package do
     [
       maintainers: ["Bonfire Networks"],
-      licenses: ["Apache 2.0"],
+      licenses: ["Apache-2.0"],
       links: %{"GitHub" => "https://github.com/bonfire-networks/ecto_sparkles"},
       files: ~w(mix.exs README.md lib config)
     ]
