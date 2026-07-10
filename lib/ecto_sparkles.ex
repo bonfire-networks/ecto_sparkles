@@ -3,6 +3,7 @@ defmodule EctoSparkles do
   @moduledoc "./README.md" |> File.stream!() |> Enum.drop(1) |> Enum.join()
 
   import Ecto, only: [assoc: 2]
+  import EctoSparkles.AssocHelpers
   # import Untangle
 
   @doc """
@@ -339,10 +340,6 @@ defmodule EctoSparkles do
     # IO.warn(inspect name)
     Macro.var(name, __MODULE__)
   end
-
-  # applies the current prefix for projoin
-  defp prefix(x, y) when is_atom(x), do: prefix(Atom.to_string(x), y)
-  defp prefix(x, y) when is_binary(x), do: String.to_atom(y <> x)
 
 
   @doc """
