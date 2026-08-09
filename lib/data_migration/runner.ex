@@ -55,7 +55,10 @@ defmodule EctoSparkles.DataMigration.Runner do
 
       query_results ->
 
-        IO.puts("DataMigration: Start batch #{batch_i} - above ID #{last_id}")
+        # NOTE: `inspect/1` (not string interpolation) because `last_id` can be a raw binary id (e.g. a
+        # Needle ULID loaded as its 16-byte form), which crashes `IO.puts` with an ArgumentError when it
+        # contains non-UTF-8 bytes.
+        IO.puts("DataMigration: Start batch #{batch_i} - above ID #{inspect(last_id)}")
 
         apply_migrate(migration_module, query_results, opts)
         Process.sleep(config.throttle_ms)
