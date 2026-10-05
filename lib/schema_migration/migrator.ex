@@ -6,7 +6,15 @@ defmodule EctoSparkles.Migrator do
   Run all migrations for configured repos.
 
   Options:
-    - `continue_on_error: true` - run migrations one by one, logging errors but continuing if one fails.
+    - `migration_error_callback_fn: fun` - run migrations one by one, calling `fun.(version, description, error, stacktrace)` for each that fails and carrying on. Without it, a failed migration raises and stops the run, as with Ecto. For example, to log failures and carry on:
+
+          migrate_repo(MyApp.Repo,
+            migration_error_callback_fn: fn version, desc, error, stacktrace ->
+              Logger.error("Migration \#{version} (\#{desc}) failed: " <> Exception.format(:error, error, stacktrace))
+            end
+          )
+
+  Either way migrations run on connections of their own without the repo's `statement_timeout` or `idle_in_transaction_session_timeout`, since a migration that rewrites a big table can take longer than any query should (see `with_migration_repo/2`).
   """
   def migrate(opts \\ []) do
     for repo <- repos(), do: migrate_repo(repo, opts)
@@ -20,14 +28,49 @@ defmodule EctoSparkles.Migrator do
   def migrate_repo(repo, opts \\ []) do
     Logger.info("Migrate #{inspect(repo)}")
 
-    if Keyword.get(opts, :continue_on_error, false) do
-      run_migrations_one_by_one(repo)
-    else
-      {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
+    case opts[:migration_error_callback_fn] do
+      migration_error_callback_fn when is_function(migration_error_callback_fn, 4) ->
+        run_migrations_one_by_one(repo, migration_error_callback_fn, opts)
+      _ ->
+        {:ok, _, _} =
+          Ecto.Migrator.with_repo(repo, fn repo ->
+            with_migration_repo(repo, fn -> Ecto.Migrator.run(repo, :up, all: true) end)
+        end)
     end
   end
 
-  defp run_migrations_one_by_one(repo) do
+  @doc """
+  Runs `fun` with the repo pointing at a pool of its own (as its dynamic repo), whose connections have no `statement_timeout` or `idle_in_transaction_session_timeout`, then stops that pool.
+
+  A migration runs in its own process on a connection from the repo's pool (`Ecto.Migrator.up/4`), and every connection of an app's pool opens with the limits its queries should have, so a migration that outlasts them is cancelled. Code that a migration calls itself (a data migration's own queries) uses the same pool, since the migrator gives the migration's process the dynamic repo of the process that called it.
+  """
+  def with_migration_repo(repo, fun) do
+    parameters =
+      Keyword.merge(repo.config()[:parameters] || [],
+        statement_timeout: "0",
+        idle_in_transaction_session_timeout: "0"
+      )
+
+    {:ok, pid} =
+      repo.start_link(
+        name: nil,
+        pool: DBConnection.ConnectionPool,
+        pool_size: 2,
+        parameters: parameters
+      )
+
+    previous = repo.get_dynamic_repo()
+    repo.put_dynamic_repo(pid)
+
+    try do
+      fun.()
+    after
+      repo.put_dynamic_repo(previous)
+      Supervisor.stop(pid)
+    end
+  end
+
+  defp run_migrations_one_by_one(repo, migration_error_callback_fn, opts) do
     paths = repo_migrations_path(repo)
 
     # Use a single with_repo call to keep the repo running for the entire
@@ -44,43 +87,65 @@ defmodule EctoSparkles.Migrator do
           |> Enum.filter(fn {status, _version, _desc, _module} -> status == :down end)
           |> Enum.map(fn {_status, version, desc, module} -> {version, desc, module} end)
 
-        Enum.map(pending, fn {version, desc, module} ->
-          Logger.info("Running migration #{version} (#{desc}) for #{inspect(repo)}")
-          try do
-            mod =
-              case module do
-                nil ->
-                  case migration_module_from_file_or_loaded(paths, version, desc) do
-                    {:ok, mod} -> mod
-                    {:error, reason} ->
-                      IO.warn("Skipping migration #{version} (#{desc}): #{reason}")
-                      throw({:skip, version, desc, reason})
-                  end
-                mod -> mod
-              end
-
-            case Ecto.Migrator.up(repo, version, mod, []) do
-              :ok ->
-                {:ok, version, desc}
-              :already_up ->
-                Logger.info("Migration #{version} (#{desc}) was already up for #{inspect(repo)}")
-                {:ok, version, desc}
-              other ->
-                IO.warn("Migration #{version} (#{desc}) for #{inspect(repo)} returned unexpected result: #{inspect(other)}")
-                {:error, version, desc, other}
-            end
-          catch
-            {:skip, version, desc, reason} ->
-              {:skipped, version, desc, reason}
-          rescue
-            e ->
-              IO.warn("Migration #{version} (#{desc}) failed for #{inspect(repo)}: #{Exception.message(e)}")
-              {:error, version, desc, e}
-          end
-        end)
+        run_pending(repo, migration_error_callback_fn, pending, Keyword.put(opts, :paths, paths))
       end, mode: :temporary)
 
     results
+  end
+
+  @doc """
+  Runs these migrations one by one, `[{version, description, module}]`, on a pool without timeouts (`with_migration_repo/2`). A `nil` module is loaded from the migration file under `opts[:paths]`.
+
+  A failure goes to `on_error` (required) and the run carries on. Without a callback there's no need for this: `migrate_repo/2` runs Ecto's own migrator, which raises.
+
+  Returns a result per migration: `{:ok, version, description}`, `{:skipped, version, description, reason}` or `{:error, version, description, error}`.
+  """
+  def run_pending(repo, on_error, pending, opts \\ []) do
+    paths = opts[:paths]
+
+    with_migration_repo(repo, fn ->
+      Enum.map(pending, fn {version, desc, module} ->
+        Logger.info("Running migration #{version} (#{desc}) for #{inspect(repo)}")
+
+        try do
+          mod =
+            case module do
+              nil ->
+                case migration_module_from_file_or_loaded(paths, version, desc) do
+                  {:ok, mod} -> mod
+                  {:error, reason} -> throw({:skip, reason})
+                end
+
+              mod ->
+                mod
+            end
+
+          case Ecto.Migrator.up(repo, version, mod, []) do
+            :ok ->
+              {:ok, version, desc}
+
+            :already_up ->
+              Logger.info("Migration #{version} (#{desc}) was already up for #{inspect(repo)}")
+              {:ok, version, desc}
+
+            other ->
+              throw({:unexpected, other})
+          end
+        catch
+          {:skip, reason} ->
+            on_error.(version, desc, reason, [])
+            {:skipped, version, desc, reason}
+
+          {:unexpected, other} ->
+            on_error.(version, desc, other, [])
+            {:error, version, desc, other}
+        rescue
+          e ->
+            on_error.(version, desc, e, __STACKTRACE__)
+            {:error, version, desc, e}
+        end
+      end)
+    end)
   end
 
   defp migration_module_from_file_or_loaded(paths, version, desc) do
