@@ -60,7 +60,7 @@ defmodule EctoSparkles.DataMigration.Runner do
         # contains non-UTF-8 bytes.
         IO.puts("DataMigration: Start batch #{batch_i} - above ID #{inspect(last_id)}")
 
-        apply_migrate(migration_module, query_results, opts)
+        safely_migrate(migration_module, query_results, opts, batch_i)
         Process.sleep(config.throttle_ms)
 
         last_processed_id = List.last(query_results).id
@@ -78,6 +78,25 @@ defmodule EctoSparkles.DataMigration.Runner do
     if function_exported?(module, :base_query, 1),
       do: module.base_query(opts),
       else: module.base_query()
+  end
+
+  # one batch that raises must not end the run: an async migration is marked done as it starts and never re-run, so the batches after it would stay unmigrated for good. The batch is logged, with its ids, and the run goes on to the next
+  defp safely_migrate(module, results, opts, batch_i) do
+    apply_migrate(module, results, opts)
+  rescue
+    e ->
+      log_failed_batch(module, results, batch_i, Exception.format(:error, e, __STACKTRACE__))
+  catch
+    kind, reason ->
+      log_failed_batch(module, results, batch_i, Exception.format(kind, reason, __STACKTRACE__))
+  end
+
+  defp log_failed_batch(module, results, batch_i, error) do
+    require Logger
+
+    Logger.error(
+      "DataMigration #{inspect(module)}: batch #{batch_i} failed, going on with the next one. Its rows: #{inspect(Enum.map(results, &Map.get(&1, :id)))}\n#{error}"
+    )
   end
 
   defp apply_migrate(module, results, opts) do
