@@ -68,13 +68,14 @@ defmodule EctoSparkles.SanitiseStrings do
       {field, value}
     else
       if Map.get(types, field) == :string do
-        scrubbed = scrubber.(value)
-
         final_value =
           if decode_entities do
-            HtmlEntities.decode(scrubbed)
+            # Tags are stripped first, then entities are decoded back to plain text (the scrubber escapes `&`). The result is plain text, not HTML: every place that shows it must escape it.
+            value
+            |> scrubber.()
+            |> HtmlEntities.decode()
           else
-            scrubbed
+            scrubber.(value)
           end
 
         {field, final_value}
